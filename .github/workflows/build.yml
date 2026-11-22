@@ -1,0 +1,40 @@
+name: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+      - name: Build
+        run: gradle assembleRelease --stacktrace 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk JetBrowser-1.0.${{ github.run_number }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JetBrowser
+          path: JetBrowser-*.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: JetBrowser 1.0.${{ github.run_number }}
+          files: JetBrowser-*.apk
+      - name: Save status
+        if: always()
+        run: |
+          git config user.name ci; git config user.email ci@local
+          mkdir -p /tmp/ci && cp build.log /tmp/ci/ 2>/dev/null || true
+          echo "${{ job.status }} run=${{ github.run_number }}" > /tmp/ci/status.txt
+          git checkout --orphan ci-log && git rm -rfq . && cp /tmp/ci/* . && git add -A
+          git commit -qm "ci ${{ github.run_number }}" && git push -f origin ci-log

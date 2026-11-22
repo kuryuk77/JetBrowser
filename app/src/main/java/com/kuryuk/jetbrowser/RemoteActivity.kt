@@ -1,0 +1,516 @@
+package com.kuryuk.jetbrowser
+
+import android.app.Activity
+import android.app.AlertDialog
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.net.nsd.NsdManager
+import android.net.nsd.NsdServiceInfo
+import android.net.wifi.WifiManager
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
+import android.view.Gravity
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.io.PrintWriter
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.net.URLEncoder
+import java.util.Locale
+import java.util.concurrent.Executors
+import kotlin.math.abs
+import kotlin.math.hypot
+import kotlin.math.min
+
+/** Telefonu TV'deki JetBrowser için touchpad + klavye olarak kullanır. */
+class RemoteActivity : Activity() {
+
+    private val main = Handler(Looper.getMainLooper())
+    private val io = Executors.newSingleThreadExecutor()
+    @Volatile private var socket: Socket? = null
+    @Volatile private var writer: PrintWriter? = null
+    private var connected = false
+    private var destroyed = false
+    private var connName = ""
+
+    private lateinit var status: TextView
+    private lateinit var input: EditText
+    private var ignoreText = false
+
+    private var nsd: NsdManager? = null
+    private var discovering = false
+    private var multicast: WifiManager.MulticastLock? = null
+    private val found = LinkedHashMap<String, Pair<String, Int>>()
+    private val resolveQueue = ArrayDeque<NsdServiceInfo>()
+    private var resolving = false
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private val prefs by lazy { getSharedPreferences("remote", MODE_PRIVATE) }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        setContentView(buildUi())
+    }
+
+    override fun onStart() {
+        super.onStart()
+        destroyed = false
+        val host = prefs.getString("host", null)
+        if (host != null) connect(host, prefs.getInt("port", REMOTE_PORT), prefs.getString("name", host) ?: host)
+        startDiscovery()
+        main.postDelayed(ping, 3000)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        destroyed = true
+        main.removeCallbacksAndMessages(null)
+        stopDiscovery()
+        disconnect()
+    }
+
+    private val ping = object : Runnable {
+        override fun run() {
+            if (connected) send("P")
+            main.postDelayed(this, 3000)
+        }
+    }
+
+    // ------------------------------------------------------------------ arayüz
+
+    private fun buildUi(): View {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF121212.toInt())
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+        }
+
+        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        status = TextView(this).apply {
+            text = "TV aranıyor…"
+            setTextColor(Color.WHITE)
+            textSize = 15f
+        }
+        top.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
+        top.addView(btn("Cihaz", 0) { chooseDevice() })
+        root.addView(top, LinearLayout.LayoutParams(-1, -2))
+
+        val pad = TouchpadView(this) { send(it) }
+        root.addView(pad, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(8), 0, dp(8)) })
+
+        val row1 = LinearLayout(this)
+        row1.addView(btn("Geri") { send("K BACK") })
+        row1.addView(btn("Ana sayfa") { send("K HOME") })
+        row1.addView(btn("Yenile") { send("K REFRESH") })
+        row1.addView(btn("Adres") { addressDialog() })
+        row1.addView(btn("Menü") { send("K MENU") })
+        root.addView(row1, LinearLayout.LayoutParams(-1, dp(48)))
+
+        val row2 = LinearLayout(this)
+        row2.addView(btn("◀") { send("K LEFT") })
+        row2.addView(btn("▲") { send("K UP") })
+        row2.addView(btn("▼") { send("K DOWN") })
+        row2.addView(btn("▶") { send("K RIGHT") })
+        row2.addView(btn("OK") { send("K CENTER") })
+        root.addView(row2, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
+
+        val row3 = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        input = EditText(this).apply {
+            hint = "Yazmak için dokunun"
+            setTextColor(Color.WHITE)
+            setHintTextColor(0xFF9E9E9E.toInt())
+            setSingleLine()
+            imeOptions = EditorInfo.IME_ACTION_SEND or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+            inputType = InputType.TYPE_CLASS_TEXT
+            background = GradientDrawable().apply { setColor(0xFF333333.toInt()); cornerRadius = dp(22).toFloat() }
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            setOnEditorActionListener { _, id, ev ->
+                val enter = ev != null && ev.keyCode == KeyEvent.KEYCODE_ENTER && ev.action == KeyEvent.ACTION_DOWN
+                if (id == EditorInfo.IME_ACTION_SEND || id == EditorInfo.IME_ACTION_DONE || enter) {
+                    send("K ENTER"); clearInput(); true
+                } else false
+            }
+            setOnKeyListener { _, code, ev ->
+                if (code == KeyEvent.KEYCODE_DEL && ev.action == KeyEvent.ACTION_DOWN && text.isEmpty()) {
+                    send("B 1"); true
+                } else false
+            }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun afterTextChanged(s: Editable?) {}
+                override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+                    if (ignoreText) return
+                    if (before > 0) send("B $before")
+                    if (count > 0) send("T " + enc(s.subSequence(start, start + count).toString()))
+                }
+            })
+        }
+        row3.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
+        row3.addView(btn("⌫", 0) { send("B 1"); removeLastLocal() })
+        row3.addView(btn("↵", 0) { send("K ENTER"); clearInput() })
+        root.addView(row3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        return root
+    }
+
+    private fun btn(t: String, weight: Int = 1, onClick: () -> Unit) = TextView(this).apply {
+        text = t
+        setTextColor(Color.WHITE)
+        textSize = 15f
+        gravity = Gravity.CENTER
+        setPadding(dp(12), dp(8), dp(12), dp(8))
+        setBackgroundResource(R.drawable.tile_bg)
+        isClickable = true
+        setOnClickListener { buzz(); onClick() }
+        layoutParams = if (weight > 0) LinearLayout.LayoutParams(0, -1, weight.toFloat()).apply { setMargins(dp(3), 0, dp(3), 0) }
+        else LinearLayout.LayoutParams(-2, dp(44)).apply { setMargins(dp(4), 0, 0, 0) }
+    }
+
+    private fun clearInput() {
+        ignoreText = true
+        input.setText("")
+        ignoreText = false
+    }
+
+    private fun removeLastLocal() {
+        val t = input.text
+        if (t.isNotEmpty()) { ignoreText = true; t.delete(t.length - 1, t.length); ignoreText = false }
+    }
+
+    private fun showKeyboard() {
+        clearInput()
+        input.requestFocus()
+        (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun addressDialog() {
+        val e = EditText(this).apply {
+            hint = "Adres veya arama"
+            setSingleLine()
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("TV'de aç").setView(e)
+            .setPositiveButton("Aç") { _, _ -> if (e.text.isNotBlank()) send("U " + enc(e.text.toString())) }
+            .setNegativeButton("Vazgeç", null).show()
+        e.requestFocus()
+        main.postDelayed({
+            (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(e, InputMethodManager.SHOW_IMPLICIT)
+        }, 200)
+    }
+
+    private fun chooseDevice() {
+        val names = found.keys.toList()
+        val items = names.map { it.removePrefix("JetBrowser ") } + "IP adresi ile bağlan"
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle(if (names.isEmpty()) "TV bulunamadı" else "TV seçin")
+            .setItems(items.toTypedArray()) { _, i ->
+                if (i < names.size) {
+                    val (h, p) = found[names[i]]!!
+                    connect(h, p, names[i])
+                } else ipDialog()
+            }.show()
+    }
+
+    private fun ipDialog() {
+        val e = EditText(this).apply {
+            hint = "örn. 192.168.1.40"
+            setSingleLine()
+            setText(prefs.getString("host", ""))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("TV adresi (TV'de Ayarlar'da yazar)").setView(e)
+            .setPositiveButton("Bağlan") { _, _ ->
+                val raw = e.text.toString().trim()
+                val host = raw.substringBefore(':')
+                val port = raw.substringAfter(':', "").toIntOrNull() ?: REMOTE_PORT
+                if (host.isNotEmpty()) connect(host, port, host)
+            }.setNegativeButton("Vazgeç", null).show()
+    }
+
+    private fun buzz() {
+        try {
+            val v = getSystemService(VIBRATOR_SERVICE) as Vibrator
+            if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(15, 60))
+        } catch (_: Exception) { }
+    }
+
+    // ------------------------------------------------------------------ bağlantı
+
+    private fun setStatus(s: String) { status.text = s }
+
+    private fun connect(host: String, port: Int, name: String) {
+        disconnect()
+        connName = name
+        setStatus("Bağlanıyor: " + name.removePrefix("JetBrowser "))
+        io.execute {
+            try {
+                val s = Socket()
+                s.connect(InetSocketAddress(host, port), 3000)
+                s.tcpNoDelay = true
+                val w = PrintWriter(OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8), true)
+                w.println("H " + Build.MODEL)
+                socket = s
+                writer = w
+                prefs.edit().putString("host", host).putInt("port", port).putString("name", name).apply()
+                main.post {
+                    connected = true
+                    setStatus("● Bağlı: " + name.removePrefix("JetBrowser "))
+                    status.setTextColor(0xFF66BB6A.toInt())
+                }
+                Thread { readLoop(s) }.start()
+            } catch (_: Exception) {
+                main.post {
+                    if (!destroyed) {
+                        setStatus("Bağlanamadı. TV'de JetBrowser açık mı?")
+                        status.setTextColor(Color.WHITE)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun readLoop(s: Socket) {
+        try {
+            val r = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.UTF_8))
+            while (true) {
+                val line = r.readLine() ?: break
+                if (line == "F") main.post { showKeyboard() }
+            }
+        } catch (_: Exception) { }
+        main.post { if (socket === s) lost() }
+    }
+
+    private fun lost() {
+        connected = false
+        writer = null
+        try { socket?.close() } catch (_: Exception) { }
+        socket = null
+        if (destroyed) return
+        setStatus("Bağlantı koptu, yeniden deneniyor…")
+        status.setTextColor(0xFFFFB74D.toInt())
+        main.postDelayed({
+            val host = prefs.getString("host", null)
+            if (!connected && !destroyed && host != null) connect(host, prefs.getInt("port", REMOTE_PORT), connName)
+        }, 2000)
+    }
+
+    private fun disconnect() {
+        connected = false
+        val s = socket
+        socket = null
+        writer = null
+        io.execute { try { s?.close() } catch (_: Exception) { } }
+    }
+
+    private fun send(cmd: String) {
+        val w = writer ?: return
+        io.execute {
+            w.println(cmd)
+            if (w.checkError()) main.post { if (writer === w) lost() }
+        }
+    }
+
+    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+
+    // ------------------------------------------------------------------ TV bulma (mDNS)
+
+    private fun startDiscovery() {
+        if (discovering) return
+        try {
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            multicast = wm.createMulticastLock("jet").apply { setReferenceCounted(false); acquire() }
+        } catch (_: Exception) { }
+        val m = getSystemService(Context.NSD_SERVICE) as NsdManager
+        nsd = m
+        try {
+            m.discoverServices(NSD_TYPE, NsdManager.PROTOCOL_DNS_SD, discovery)
+            discovering = true
+        } catch (_: Exception) { }
+    }
+
+    private fun stopDiscovery() {
+        if (discovering) try { nsd?.stopServiceDiscovery(discovery) } catch (_: Exception) { }
+        discovering = false
+        try { multicast?.release() } catch (_: Exception) { }
+    }
+
+    private val discovery = object : NsdManager.DiscoveryListener {
+        override fun onStartDiscoveryFailed(t: String?, c: Int) { discovering = false }
+        override fun onStopDiscoveryFailed(t: String?, c: Int) {}
+        override fun onDiscoveryStarted(t: String?) {}
+        override fun onDiscoveryStopped(t: String?) {}
+        override fun onServiceLost(i: NsdServiceInfo?) {}
+        override fun onServiceFound(i: NsdServiceInfo) {
+            if (i.serviceName == "JetBrowser " + Build.MODEL) return
+            main.post { resolveQueue.addLast(i); resolveNext() }
+        }
+    }
+
+    private fun resolveNext() {
+        if (resolving) return
+        val info = resolveQueue.removeFirstOrNull() ?: return
+        resolving = true
+        try {
+            @Suppress("DEPRECATION")
+            nsd?.resolveService(info, object : NsdManager.ResolveListener {
+                override fun onResolveFailed(i: NsdServiceInfo?, code: Int) {
+                    main.post {
+                        resolving = false
+                        if (code == NsdManager.FAILURE_ALREADY_ACTIVE) resolveQueue.addLast(info)
+                        main.postDelayed({ resolveNext() }, 300)
+                    }
+                }
+
+                @Suppress("DEPRECATION")
+                override fun onServiceResolved(i: NsdServiceInfo) {
+                    val host = i.host?.hostAddress
+                    main.post {
+                        resolving = false
+                        if (host != null) onFound(i.serviceName, host, i.port)
+                        resolveNext()
+                    }
+                }
+            })
+        } catch (_: Exception) { resolving = false }
+    }
+
+    private fun onFound(name: String, host: String, port: Int) {
+        found[name] = Pair(host, port)
+        if (connected) return
+        val last = prefs.getString("name", null)
+        if (last == null || last == name || last == host || found.size == 1) connect(host, port, name)
+        else setStatus("${found.size} TV bulundu — \"Cihaz\" ile seçin")
+    }
+}
+
+/** Parmak hareketlerini fare komutlarına çevirir. */
+class TouchpadView(ctx: Context, private val out: (String) -> Unit) : View(ctx) {
+    private val d = resources.displayMetrics.density
+    private val slop = 8 * d
+    private var lastX = 0f
+    private var lastY = 0f
+    private var downX = 0f
+    private var downY = 0f
+    private var downT = 0L
+    private var moved = false
+    private var scrolling = false
+    private var scrollDone = false
+    private var longPressed = false
+    private var maxPointers = 1
+    private val h = Handler(Looper.getMainLooper())
+    private val longPress = Runnable {
+        if (!moved && !scrolling) {
+            longPressed = true
+            out("LD")
+            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        }
+    }
+    private val hint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF777777.toInt(); textSize = 14 * d; textAlign = Paint.Align.CENTER
+    }
+    private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFAAAAAA.toInt(); textSize = 20 * d; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD
+    }
+
+    init {
+        background = GradientDrawable().apply {
+            setColor(0xFF1E1E1E.toInt()); cornerRadius = 20 * d; setStroke((1 * d).toInt(), 0xFF3A3A3A.toInt())
+        }
+    }
+
+    override fun onDraw(c: Canvas) {
+        val cx = width / 2f
+        val cy = height / 2f
+        c.drawText("Touchpad", cx, cy - 30 * d, title)
+        c.drawText("Kaydır: imleç   •   Dokun: tıkla", cx, cy, hint)
+        c.drawText("İki parmak: sayfayı kaydır", cx, cy + 22 * d, hint)
+        c.drawText("Basılı tut: uzun basma / sürükle", cx, cy + 44 * d, hint)
+    }
+
+    private fun f(v: Float) = String.format(Locale.US, "%.1f", v)
+
+    private fun avgX(e: MotionEvent): Float { var s = 0f; for (i in 0 until e.pointerCount) s += e.getX(i); return s / e.pointerCount }
+    private fun avgY(e: MotionEvent): Float { var s = 0f; for (i in 0 until e.pointerCount) s += e.getY(i); return s / e.pointerCount }
+
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                lastX = e.x; lastY = e.y; downX = e.x; downY = e.y; downT = e.eventTime
+                moved = false; scrolling = false; scrollDone = false; longPressed = false; maxPointers = 1
+                h.postDelayed(longPress, 450)
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                maxPointers = maxOf(maxPointers, e.pointerCount)
+                h.removeCallbacks(longPress)
+                if (e.pointerCount == 2 && !scrolling && !longPressed) {
+                    scrolling = true
+                    lastX = avgX(e); lastY = avgY(e)
+                    out("SD")
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (scrolling) {
+                    val ax = avgX(e); val ay = avgY(e)
+                    val dx = (ax - lastX) / d; val dy = (ay - lastY) / d
+                    if (abs(dx) + abs(dy) >= 0.5f) {
+                        out("S ${f(dx)} ${f(dy)}")
+                        lastX = ax; lastY = ay
+                    }
+                } else if (!scrollDone && e.pointerCount == 1) {
+                    if (!moved && hypot(e.x - downX, e.y - downY) > slop) { moved = true; if (!longPressed) h.removeCallbacks(longPress) }
+                    if (moved) {
+                        val dx = (e.x - lastX) / d
+                        val dy = (e.y - lastY) / d
+                        val speed = hypot(dx, dy)
+                        val acc = min(1.3f + speed * 0.12f, 3.5f)
+                        if (speed > 0.2f) out("M ${f(dx * acc)} ${f(dy * acc)}")
+                        lastX = e.x; lastY = e.y
+                    }
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (scrolling && e.pointerCount - 1 < 2) {
+                    out("SE"); scrolling = false; scrollDone = true
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                h.removeCallbacks(longPress)
+                if (scrolling) { out("SE"); scrolling = false }
+                if (longPressed) out("LU")
+                else if (!moved && maxPointers == 1 && e.eventTime - downT < 350) {
+                    out("C"); performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                h.removeCallbacks(longPress)
+                if (scrolling) out("SE")
+                if (longPressed) out("LU")
+                scrolling = false; longPressed = false
+            }
+        }
+        return true
+    }
+}

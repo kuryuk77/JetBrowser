@@ -1,0 +1,14 @@
+<resources>
+    <color name="bg">#FF121212</color>
+    <color name="bar">#FF1E1E1E</color>
+    <color name="tile">#FF2A2A2A</color>
+    <color name="accent">#FFE53935</color>
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:colorPrimary">@color/bar</item>
+        <item name="android:colorPrimaryDark">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+</resources>
