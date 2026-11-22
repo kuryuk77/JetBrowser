@@ -156,8 +156,9 @@ class RemoteActivity : Activity() {
         root.addView(top, LinearLayout.LayoutParams(-1, -2))
 
         val row0 = LinearLayout(this)
+        row0.addView(btn("TV'de aç") { if (connected) { send("W"); toast("TV'de JetBrowser açılıyor") } else toast("TV'ye bağlı değil") }.apply { setTextColor(0xFFFFC83D.toInt()) })
         row0.addView(btn("Dosya gönder") { pickFiles() }.apply { setTextColor(0xFFFFC83D.toInt()) })
-        row0.addView(btn("TV'yi güncelle") { updateTv() }.apply { setTextColor(0xFFFFC83D.toInt()) })
+        row0.addView(btn("Güncelle") { updateTv() }.apply { setTextColor(0xFFFFC83D.toInt()) })
         row0.addView(btn("Cihaz") { chooseDevice() })
         root.addView(row0, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
 

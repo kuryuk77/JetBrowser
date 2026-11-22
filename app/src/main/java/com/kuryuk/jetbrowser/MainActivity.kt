@@ -121,22 +121,57 @@ class MainActivity : Activity() {
         cursorMode = store.cursorDefault(isTv)
         buildUi()
         setContentView(root)
-        remote = RemoteServer(this, ::onRemote, ::onRemoteClients)
-        remote.fileListener = { ev, name, file ->
+        remote = Hub.start(this)
+        Hub.owner = this
+        Hub.onCommand = ::onRemote
+        Hub.onClients = ::onRemoteClients
+        Hub.onFile = { ev, name, file ->
             when (ev) {
                 0 -> toast("Telefondan dosya alınıyor: $name")
                 1 -> if (file != null) onFileReceived(file)
                 else -> toast("Dosya alınamadı: $name")
             }
         }
-        remote.start()
+        if (isTv) Hub.startService(this)
+        wakeScreen(intent)
         restoreTabs()
         if (!handleIntent(intent)) showHome(false)
+        if (Hub.clientCount > 0) onRemoteClients(Hub.clientCount, Hub.clientName)
+        Hub.pendingFile?.let { Hub.pendingFile = null; root.post { onFileReceived(it) } }
+        if (isTv && !canWake() && !getSharedPreferences("jet", MODE_PRIVATE).getBoolean("askedWake", false)) {
+            getSharedPreferences("jet", MODE_PRIVATE).edit().putBoolean("askedWake", true).apply()
+            root.post { wakePermissionPanel() }
+        }
+    }
+
+    private fun canWake() = Build.VERSION.SDK_INT < 29 || Settings.canDrawOverlays(this)
+
+    /** Telefondan "TV'de aç" ile gelindiyse ekranı uyandırmayı dene. */
+    private fun wakeScreen(i: Intent?) {
+        if (i?.getBooleanExtra("wake", false) != true) return
+        if (Build.VERSION.SDK_INT >= 27) { setTurnScreenOn(true); setShowWhenLocked(true) }
+        else @Suppress("DEPRECATION") window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+    }
+
+    private fun wakePermissionPanel() {
+        openPanel("Telefondan açma izni",
+            "JetBrowser kapalıyken telefondaki \"TV'de aç\" düğmesinin çalışması için bu TV'de " +
+                "\"Diğer uygulamaların üzerinde göster\" izni gerekiyor. Açılan listede JetBrowser'ı bulup izni açın.",
+            null, listOf(Pair("Sonra") { }, Pair("İzin ver") {
+                try {
+                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                } catch (_: Exception) {
+                    try { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)) }
+                    catch (_: Exception) { toast("TV Ayarları > Uygulamalar > Özel uygulama erişimi bölümünden verin") }
+                }
+            }))
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        wakeScreen(intent)
         handleIntent(intent)
+        Hub.pendingFile?.let { Hub.pendingFile = null; onFileReceived(it) }
     }
 
     private var pendingApk: File? = null
@@ -195,7 +230,10 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        remote.stop()
+        if (Hub.owner === this) {
+            Hub.owner = null; Hub.onCommand = null; Hub.onClients = null; Hub.onFile = null
+            if (!isTv) Hub.stop()
+        }
         tabs.forEach { it.destroy() }
         super.onDestroy()
     }
@@ -1307,10 +1345,11 @@ class MainActivity : Activity() {
         val msg = "Telefonunuzda \"Jet Kumanda\" uygulamasını açın. TV ile telefon aynı Wi-Fi ağında olmalı.\n\n" +
             "Otomatik bulunmazsa bu adresi girin:\n" + RemoteServer.localIp() + ":" + remote.port +
             "\n\nDurum: " + (if (remoteConnected) "Telefon bağlı" else "Telefon bekleniyor")
-        openPanel("Telefon kumandası", msg, null, listOf(
-            Pair("TV imleci: " + onOff(cursorMode)) { toggleCursor() },
-            Pair("Tamam") { }
-        ))
+        val buttons = mutableListOf<Pair<String, () -> Unit>>()
+        if (!canWake()) buttons.add(Pair("Açma izni") { wakePermissionPanel() })
+        buttons.add(Pair("İmleç: " + onOff(cursorMode)) { toggleCursor() })
+        buttons.add(Pair("Tamam") { })
+        openPanel("Telefon kumandası", msg, null, buttons)
     }
 
     private fun share(url: String?) {
