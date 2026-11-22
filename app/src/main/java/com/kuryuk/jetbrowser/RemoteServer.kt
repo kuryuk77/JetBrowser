@@ -6,7 +6,12 @@ import android.net.nsd.NsdServiceInfo
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import java.io.BufferedInputStream
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.net.URLDecoder
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
@@ -33,6 +38,8 @@ class RemoteServer(
     private var nsd: NsdManager? = null
     private var reg: NsdManager.RegistrationListener? = null
     @Volatile private var running = false
+    /** Dosya olayları: 0 = başladı, 1 = bitti, 2 = hata */
+    var fileListener: ((Int, String, File?) -> Unit)? = null
     val serviceName = "JetBrowser " + Build.MODEL
 
     fun start() {
@@ -52,29 +59,79 @@ class RemoteServer(
         }.start()
     }
 
+    private fun readLineRaw(ins: InputStream): String? {
+        val buf = java.io.ByteArrayOutputStream()
+        while (true) {
+            val b = ins.read()
+            if (b < 0) return if (buf.size() == 0) null else buf.toString("UTF-8")
+            if (b == '\n'.code) return buf.toString("UTF-8").trimEnd('\r')
+            buf.write(b)
+            if (buf.size() > 8192) return null
+        }
+    }
+
+    private fun receiveFile(header: String, ins: InputStream, s: Socket) {
+        val p = header.split(' ')
+        val name = URLDecoder.decode(p.getOrNull(1) ?: "dosya", "UTF-8")
+        val size = p.getOrNull(2)?.toLongOrNull() ?: -1L
+        val f = FileShare.target(ctx, name)
+        main.post { fileListener?.invoke(0, f.name, null) }
+        try {
+            FileOutputStream(f).use { out ->
+                val buf = ByteArray(64 * 1024)
+                var left = size
+                while (left != 0L) {
+                    val want = if (left < 0) buf.size.toLong() else minOf(left, buf.size.toLong())
+                    val n = ins.read(buf, 0, want.toInt())
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    if (left > 0) left -= n
+                }
+                if (left > 0) throw java.io.IOException("eksik")
+            }
+            s.getOutputStream().write("OK\n".toByteArray())
+            s.getOutputStream().flush()
+            main.post { fileListener?.invoke(1, f.name, f) }
+        } catch (e: Exception) {
+            f.delete()
+            main.post { fileListener?.invoke(2, f.name, null) }
+        } finally {
+            try { s.close() } catch (_: Exception) { }
+        }
+    }
+
     private fun serve(s: Socket) {
         var out: PrintWriter? = null
         var name = "Telefon"
+        var counted = false
         try {
             s.tcpNoDelay = true
+            val ins = BufferedInputStream(s.getInputStream())
+            val first = readLineRaw(ins) ?: return
+            if (first.startsWith("FILE ")) { receiveFile(first, ins, s); return }
             out = PrintWriter(OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8), true)
             clients.add(out)
-            val r = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.UTF_8))
-            while (running) {
-                val line = r.readLine() ?: break
-                if (line.startsWith("H ")) {
-                    name = line.substring(2)
+            counted = true
+            val r = BufferedReader(InputStreamReader(ins, Charsets.UTF_8))
+            var line: String? = first
+            while (running && line != null) {
+                val l: String = line
+                if (l.startsWith("H ")) {
+                    name = l.substring(2)
                     val n = clients.size
                     main.post { onClients(n, name) }
                 }
-                if (line != "P") main.post { onCommand(line) }
+                if (l != "P") main.post { onCommand(l) }
+                line = r.readLine()
             }
         } catch (_: Exception) {
         } finally {
             out?.let { clients.remove(it) }
             try { s.close() } catch (_: Exception) { }
-            val n = clients.size
-            main.post { onClients(n, name) }
+            if (counted) {
+                val n = clients.size
+                main.post { onClients(n, name) }
+            }
         }
     }
 

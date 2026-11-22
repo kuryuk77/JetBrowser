@@ -120,6 +120,13 @@ class MainActivity : Activity() {
         buildUi()
         setContentView(root)
         remote = RemoteServer(this, ::onRemote, ::onRemoteClients)
+        remote.fileListener = { ev, name, file ->
+            when (ev) {
+                0 -> toast("Telefondan dosya alınıyor: $name")
+                1 -> if (file != null) onFileReceived(file)
+                else -> toast("Dosya alınamadı: $name")
+            }
+        }
         remote.start()
         restoreTabs()
         if (!handleIntent(intent)) showHome(false)
@@ -128,6 +135,57 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
+    }
+
+    private var pendingApk: File? = null
+
+    override fun onResume() {
+        super.onResume()
+        val f = pendingApk
+        if (f != null && (Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls())) {
+            pendingApk = null
+            installApk(f)
+        }
+    }
+
+    // ------------------------------------------------------------------ telefondan gelen dosyalar
+
+    private fun onFileReceived(f: File) {
+        if (f.name.lowercase().endsWith(".apk")) { installApk(f); return }
+        show(builder().setTitle("Dosya alındı").setMessage(f.name)
+            .setPositiveButton("Aç") { _, _ -> openReceived(f) }
+            .setNegativeButton("Tamam", null))
+    }
+
+    private fun openReceived(f: File) {
+        if (f.name.lowercase().endsWith(".apk")) { installApk(f); return }
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(FileShare.uri(this, f), FileShare.mime(f.name))
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) { toast("Bu dosyayı açacak uygulama yok") }
+    }
+
+    private fun installApk(f: File) {
+        if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            pendingApk = f
+            toast("JetBrowser'a uygulama yükleme izni verip geri dönün")
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                return
+            } catch (_: Exception) {
+                toast("TV ayarlarında JetBrowser'a 'bilinmeyen kaynak' izni verin")
+            }
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivity(Intent(Intent.ACTION_INSTALL_PACKAGE).setDataAndType(FileShare.uri(this, f), FileShare.mime(f.name))
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(FileShare.uri(this, f), FileShare.mime(f.name))
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: Exception) { toast("Kurulum ekranı açılamadı") }
+        }
     }
 
     override fun onPause() {
@@ -1156,14 +1214,21 @@ class MainActivity : Activity() {
             }
         } catch (_: Exception) { }
         ids.reverse(); names.reverse()
-        listDialog("İndirilenler (silmek için uzun basın)", names, { i ->
-            val uri = dm.getUriForDownloadedFile(ids[i])
+        val received = (FileShare.dir(this).listFiles() ?: arrayOf()).sortedByDescending { it.lastModified() }
+        val labels = received.map { "📥  " + it.name } + names
+        listDialog("İndirilenler (silmek için uzun basın)", labels, { i ->
+            if (i < received.size) { openReceived(received[i]); return@listDialog }
+            val id = ids[i - received.size]
+            val uri = dm.getUriForDownloadedFile(id)
             if (uri == null) { toast("Dosya hazır değil"); return@listDialog }
             try {
-                startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, dm.getMimeTypeForDownloadedFile(ids[i]))
+                startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, dm.getMimeTypeForDownloadedFile(id))
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
             } catch (_: Exception) { toast("Bu dosyayı açacak uygulama yok") }
-        }, { i -> dm.remove(ids[i]); toast("Silindi") })
+        }, { i ->
+            if (i < received.size) received[i].delete() else dm.remove(ids[i - received.size])
+            toast("Silindi")
+        })
     }
 
     // ------------------------------------------------------------------ sesli arama, yardımcılar

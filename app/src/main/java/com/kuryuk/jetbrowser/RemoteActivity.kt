@@ -3,6 +3,14 @@ package com.kuryuk.jetbrowser
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.ProgressBar
+import android.widget.Toast
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -53,6 +61,10 @@ class RemoteActivity : Activity() {
     private var connected = false
     private var destroyed = false
     private var connName = ""
+    @Volatile private var curHost: String? = null
+    private var curPort = REMOTE_PORT
+    private val pendingShare = mutableListOf<Uri>()
+    private var sendingFiles = false
 
     private lateinit var status: TextView
     private lateinit var input: EditText
@@ -72,6 +84,33 @@ class RemoteActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(buildUi())
+        takeShare(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeShare(intent)
+    }
+
+    /** Başka uygulamadan "Paylaş → TV'ye gönder" ile gelen dosyalar. */
+    private fun takeShare(i: Intent?) {
+        i ?: return
+        val uris = mutableListOf<Uri>()
+        @Suppress("DEPRECATION")
+        when (i.action) {
+            Intent.ACTION_SEND -> (i.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let { uris.add(it) }
+            Intent.ACTION_SEND_MULTIPLE -> i.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris.addAll(it) }
+        }
+        if (uris.isEmpty()) return
+        pendingShare.addAll(uris)
+        if (connected) flushShare() else toast("TV'ye bağlanınca gönderilecek")
+    }
+
+    private fun flushShare() {
+        if (pendingShare.isEmpty()) return
+        val list = pendingShare.toList()
+        pendingShare.clear()
+        sendUris(list)
     }
 
     override fun onStart() {
@@ -114,8 +153,13 @@ class RemoteActivity : Activity() {
             textSize = 15f
         }
         top.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(btn("Cihaz", 0) { chooseDevice() })
         root.addView(top, LinearLayout.LayoutParams(-1, -2))
+
+        val row0 = LinearLayout(this)
+        row0.addView(btn("Dosya gönder") { pickFiles() })
+        row0.addView(btn("TV'yi güncelle") { updateTv() })
+        row0.addView(btn("Cihaz") { chooseDevice() })
+        root.addView(row0, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
 
         val pad = TouchpadView(this) { send(it) }
         root.addView(pad, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(8), 0, dp(8)) })
@@ -274,11 +318,14 @@ class RemoteActivity : Activity() {
                 w.println("H " + Build.MODEL)
                 socket = s
                 writer = w
+                curHost = host
+                curPort = port
                 prefs.edit().putString("host", host).putInt("port", port).putString("name", name).apply()
                 main.post {
                     connected = true
                     setStatus("● Bağlı: " + name.removePrefix("JetBrowser "))
                     status.setTextColor(0xFF66BB6A.toInt())
+                    flushShare()
                 }
                 Thread { readLoop(s) }.start()
             } catch (_: Exception) {
@@ -334,6 +381,127 @@ class RemoteActivity : Activity() {
     }
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+
+    // ------------------------------------------------------------------ dosya gönderme
+
+    private fun toast(t: String) = Toast.makeText(this, t, Toast.LENGTH_SHORT).show()
+
+    private fun pickFiles() {
+        if (curHost == null || !connected) { toast("Önce TV'ye bağlanın"); return }
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, 11)
+        } catch (_: Exception) { toast("Dosya seçici açılamadı") }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 11 || resultCode != RESULT_OK || data == null) return
+        val uris = mutableListOf<Uri>()
+        val clip = data.clipData
+        if (clip != null) for (k in 0 until clip.itemCount) uris.add(clip.getItemAt(k).uri)
+        else data.data?.let { uris.add(it) }
+        sendUris(uris)
+    }
+
+    private class Outgoing(val name: String, val size: Long, val open: () -> InputStream)
+
+    private fun sendUris(uris: List<Uri>) {
+        val items = uris.mapNotNull { u ->
+            var name = u.lastPathSegment?.substringAfterLast('/') ?: "dosya"
+            var size = -1L
+            try {
+                contentResolver.query(u, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) {
+                        c.getString(0)?.let { name = it }
+                        if (!c.isNull(1)) size = c.getLong(1)
+                    }
+                }
+            } catch (_: Exception) { }
+            if (size < 0) {
+                // boyutu bilinmiyorsa önce geçici dosyaya kopyala
+                try {
+                    val tmp = File(cacheDir, "send_" + System.nanoTime())
+                    contentResolver.openInputStream(u)?.use { i -> tmp.outputStream().use { i.copyTo(it) } }
+                    val t = tmp
+                    Outgoing(name, t.length()) { FileInputStream(t) }
+                } catch (_: Exception) { null }
+            } else Outgoing(name, size) { contentResolver.openInputStream(u) ?: throw java.io.IOException() }
+        }
+        sendItems(items)
+    }
+
+    /** Bu telefondaki JetBrowser'ı TV'ye gönderir; TV'de kurulum ekranı açılır. */
+    private fun updateTv() {
+        if (curHost == null || !connected) { toast("Önce TV'ye bağlanın"); return }
+        val apk = File(applicationInfo.sourceDir)
+        val ver = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (_: Exception) { "" }
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("TV'yi güncelle")
+            .setMessage("Bu telefondaki JetBrowser $ver TV'ye gönderilecek. TV'de kurulum ekranı açılınca \"Yükle\" deyin.")
+            .setPositiveButton("Gönder") { _, _ ->
+                sendItems(listOf(Outgoing("JetBrowser-$ver.apk", apk.length()) { FileInputStream(apk) }))
+            }
+            .setNegativeButton("Vazgeç", null).show()
+    }
+
+    private fun sendItems(items: List<Outgoing>) {
+        val host = curHost
+        if (host == null || items.isEmpty()) return
+        if (sendingFiles) { toast("Bir gönderim zaten sürüyor"); return }
+        sendingFiles = true
+        val port = curPort
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(12), dp(20), dp(4)) }
+        val label = TextView(this).apply { setTextColor(Color.WHITE) }
+        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 1000 }
+        box.addView(label); box.addView(bar)
+        val dlg = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("TV'ye gönderiliyor").setView(box).setCancelable(false).show()
+        Thread {
+            var ok = 0
+            for ((idx, it) in items.withIndex()) {
+                main.post { label.text = "${idx + 1}/${items.size}  ${it.name}"; bar.progress = 0 }
+                try {
+                    Socket().use { s ->
+                        s.connect(InetSocketAddress(host, port), 4000)
+                        s.soTimeout = 60000
+                        val out = s.getOutputStream().buffered(64 * 1024)
+                        out.write(("FILE " + enc(it.name) + " " + it.size + "\n").toByteArray())
+                        var sent = 0L
+                        var lastUi = 0L
+                        it.open().use { ins ->
+                            val buf = ByteArray(64 * 1024)
+                            while (true) {
+                                val n = ins.read(buf)
+                                if (n < 0) break
+                                out.write(buf, 0, n)
+                                sent += n
+                                val now = System.currentTimeMillis()
+                                if (now - lastUi > 150 && it.size > 0) {
+                                    lastUi = now
+                                    val p = (sent * 1000 / it.size).toInt()
+                                    main.post { bar.progress = p }
+                                }
+                            }
+                        }
+                        out.flush()
+                        val reply = BufferedReader(InputStreamReader(s.getInputStream())).readLine()
+                        if (reply == "OK") ok++
+                    }
+                } catch (_: Exception) { }
+            }
+            main.post {
+                sendingFiles = false
+                try { dlg.dismiss() } catch (_: Exception) { }
+                toast(if (ok == items.size) "Gönderildi ✓" else "$ok/${items.size} dosya gönderildi")
+                cacheDir.listFiles()?.filter { it.name.startsWith("send_") }?.forEach { it.delete() }
+            }
+        }.start()
+    }
 
     // ------------------------------------------------------------------ TV bulma (mDNS)
 
