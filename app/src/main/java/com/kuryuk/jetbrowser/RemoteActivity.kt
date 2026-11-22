@@ -166,10 +166,14 @@ class RemoteActivity : Activity() {
         }.apply { setTextColor(0xFFFFC83D.toInt()) }
         val rowTv = LinearLayout(this)
         rowTv.addView(tv("⏻ Güç", "PWR"))
-        rowTv.addView(tv("Tarayıcıyı aç", "W"))
-        rowTv.addView(tv("⇄ Uyg. değiştir", "X"))
         rowTv.addView(tv("TV ana ekran", "GH"))
-        root.addView(rowTv, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
+        rowTv.addView(tv("Giriş", "IN?"))
+        root.addView(rowTv, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(6) })
+        val rowApp = LinearLayout(this)
+        rowApp.addView(tv("⇄ Önceki", "X"))
+        rowApp.addView(tv("Uygulamalar", "X?"))
+        rowApp.addView(tv("Tarayıcıyı aç", "W"))
+        root.addView(rowApp, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(6) })
 
         val pad = TouchpadView(this) { send(it) }
         root.addView(pad, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(8), 0, dp(8)) })
@@ -313,6 +317,21 @@ class RemoteActivity : Activity() {
             }.setNegativeButton("Vazgeç", null).show()
     }
 
+    /** TV'den gelen liste (uygulamalar ya da girişler): seçileni TV'de açar. */
+    private fun showTvList(line: String) {
+        val kind = line.substring(2, 3)
+        val items = line.substring(4).split('&').mapNotNull {
+            val p = it.split('=')
+            if (p.size == 2) Pair(java.net.URLDecoder.decode(p[0], "UTF-8"), p[1]) else null
+        }
+        if (items.isEmpty() || isFinishing) return
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle(if (kind == "I") "TV girişi seçin" else "TV'de aç  (● açık, ↺ son kullanılan)")
+            .setItems(items.map { it.first }.toTypedArray()) { _, i ->
+                send((if (kind == "I") "IN " else "XO ") + items[i].second)
+            }.show()
+    }
+
     private fun buzz() {
         try {
             val v = getSystemService(VIBRATOR_SERVICE) as Vibrator
@@ -368,6 +387,7 @@ class RemoteActivity : Activity() {
             while (true) {
                 val line = r.readLine() ?: break
                 if (line == "F") main.post { showKeyboard() }
+                else if (line.startsWith("L ")) main.post { showTvList(line) }
                 else if (line.startsWith("N ")) main.post { Toast.makeText(this, line.substring(2), Toast.LENGTH_LONG).show() }
             }
         } catch (_: Exception) { }

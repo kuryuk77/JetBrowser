@@ -10,6 +10,9 @@ import android.view.View
 class CursorView(ctx: Context) : View(ctx) {
     var cx = 0f
     var cy = 0f
+    /** Görünüm ölçülmeden önce kullanılacak sınırlar (sistem geneli imleç). */
+    var maxW = 0f
+    var maxH = 0f
     private val d = resources.displayMetrics.density
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); style = Paint.Style.FILL }
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -27,8 +30,10 @@ class CursorView(ctx: Context) : View(ctx) {
     }
 
     fun moveBy(dx: Float, dy: Float) {
-        cx = (cx + dx).coerceIn(0f, (width - 1).toFloat().coerceAtLeast(0f))
-        cy = (cy + dy).coerceIn(0f, (height - 1).toFloat().coerceAtLeast(0f))
+        val w = if (width > 0) width.toFloat() else maxW
+        val h = if (height > 0) height.toFloat() else maxH
+        cx = (cx + dx).coerceIn(0f, (w - 1).coerceAtLeast(0f))
+        cy = (cy + dy).coerceIn(0f, (h - 1).coerceAtLeast(0f))
         invalidate()
     }
 

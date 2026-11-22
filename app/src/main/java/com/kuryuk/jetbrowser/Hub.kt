@@ -9,10 +9,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.media.tv.TvContract
+import android.media.tv.TvInputManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import java.io.File
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 /** Kumanda sunucusunu uygulama süreci boyunca tek yerde tutar; ekran kapalıyken de dinleyebilir. */
 object Hub {
@@ -49,21 +53,80 @@ object Hub {
 
     /** JetBrowser ekranda mı? (MainActivity bildirir) */
     var foreground = false
+        set(v) { field = v; if (v) JetAccess.instance?.hideCursor() }
 
     private fun needAccess() {
         server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > Tam kontrol izni")
     }
 
-    private fun handle(cmd: String) {
+    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+
+    private fun handle(line: String) {
         val acc = JetAccess.instance
+        val cmd = line.substringBefore(' ')
+        val arg = line.substringAfter(' ', "")
         when (cmd) {
             "W" -> launch()
             "X" -> if (acc == null) needAccess() else if (!acc.switchApp()) server?.send("N Geçilecek önceki uygulama yok")
+            "X?" -> sendApps()
+            "XO" -> openApp(URLDecoder.decode(arg, "UTF-8"))
+            "IN?" -> sendInputs()
+            "IN" -> openInput(URLDecoder.decode(arg, "UTF-8"))
             "GH" -> if (acc == null) needAccess() else acc.home()
             "PWR" -> power()
-            "K BACK" -> if (!foreground && acc != null) acc.back() else onCommand?.invoke(cmd)
-            else -> onCommand?.invoke(cmd)
+            "M", "C", "LD", "LU", "SD", "S", "SE" ->
+                if (!foreground && acc != null) acc.pointer(cmd, arg) else onCommand?.invoke(line)
+            "K" -> if (arg == "BACK" && !foreground && acc != null) acc.back() else onCommand?.invoke(line)
+            else -> onCommand?.invoke(line)
         }
+    }
+
+    /** TV'deki uygulamalar: son kullanılanlar başta, sonra diğerleri. */
+    private fun sendApps() {
+        val a = app ?: return
+        val pm = a.packageManager
+        val labels = LinkedHashMap<String, String>()
+        for (cat in listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER)) {
+            try {
+                pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(cat), 0).forEach {
+                    val p = it.activityInfo.packageName
+                    if (!labels.containsKey(p)) labels[p] = it.loadLabel(pm).toString()
+                }
+            } catch (_: Exception) { }
+        }
+        val recent = (JetAccess.instance?.history ?: emptyList<String>()).filter { labels.containsKey(it) }
+        val rest = labels.keys.filter { !recent.contains(it) }.sortedBy { labels[it]!!.lowercase() }
+        val out = recent.mapIndexed { i, p -> enc((if (i == 0) "● " else "↺ ") + labels[p]) + "=" + enc(p) } +
+            rest.map { enc(labels[it]!!) + "=" + enc(it) }
+        server?.send("L A " + out.joinToString("&"))
+    }
+
+    private fun startFromAnywhere(i: Intent): Boolean {
+        val acc = JetAccess.instance
+        if (acc == null && !foreground) { needAccess(); return false }
+        return try { (acc ?: app)?.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }
+        catch (_: Exception) { server?.send("N Açılamadı"); false }
+    }
+
+    private fun openApp(p: String) {
+        val pm = app?.packageManager ?: return
+        val i = pm.getLeanbackLaunchIntentForPackage(p) ?: pm.getLaunchIntentForPackage(p)
+        if (i == null) server?.send("N Açılamadı") else startFromAnywhere(i)
+    }
+
+    /** HDMI / anten gibi TV girişleri. */
+    private fun sendInputs() {
+        val a = app ?: return
+        try {
+            val tm = a.getSystemService(Context.TV_INPUT_SERVICE) as TvInputManager
+            val list = tm.tvInputList.filter { it.isPassthroughInput }
+            if (list.isEmpty()) { server?.send("N Bu TV giriş listesini uygulamalara vermiyor"); return }
+            server?.send("L I " + list.joinToString("&") { enc(it.loadLabel(a).toString()) + "=" + enc(it.id) })
+        } catch (_: Exception) { server?.send("N Bu TV giriş listesini uygulamalara vermiyor") }
+    }
+
+    private fun openInput(id: String) {
+        startFromAnywhere(Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(id)))
     }
 
     /** Ekran kapalıysa uyandırır, açıksa uyutur. */
