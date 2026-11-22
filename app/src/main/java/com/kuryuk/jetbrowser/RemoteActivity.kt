@@ -178,21 +178,28 @@ class RemoteActivity : Activity() {
         val pad = TouchpadView(this) { send(it) }
         root.addView(pad, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(8), 0, dp(8)) })
 
-        val row1 = LinearLayout(this)
-        row1.addView(btn("Geri") { send("K BACK") })
-        row1.addView(btn("Ana sayfa") { send("K HOME") })
-        row1.addView(btn("Yenile") { send("K REFRESH") })
-        row1.addView(btn("Adres") { addressDialog() })
-        row1.addView(btn("Menü") { send("K MENU") })
-        root.addView(row1, LinearLayout.LayoutParams(-1, dp(48)))
-
-        val row2 = LinearLayout(this)
-        row2.addView(btn("◀") { send("K LEFT") })
-        row2.addView(btn("▲") { send("K UP") })
-        row2.addView(btn("▼") { send("K DOWN") })
-        row2.addView(btn("▶") { send("K RIGHT") })
-        row2.addView(btn("OK") { send("K CENTER") })
-        root.addView(row2, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
+        // gerçek kumanda gibi: solda yön tuşları, sağda işlev tuşları
+        val bottom = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val pad5 = android.widget.FrameLayout(this)
+        val b = dp(54)
+        pad5.addView(round("▲", "K UP", true), android.widget.FrameLayout.LayoutParams(b, b, Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        pad5.addView(round("▼", "K DOWN", true), android.widget.FrameLayout.LayoutParams(b, b, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        pad5.addView(round("◀", "K LEFT", true), android.widget.FrameLayout.LayoutParams(b, b, Gravity.START or Gravity.CENTER_VERTICAL))
+        pad5.addView(round("▶", "K RIGHT", true), android.widget.FrameLayout.LayoutParams(b, b, Gravity.END or Gravity.CENTER_VERTICAL))
+        pad5.addView(round("OK", "K CENTER", false).apply { setTextColor(0xFFFFC83D.toInt()); textSize = 16f },
+            android.widget.FrameLayout.LayoutParams(b, b, Gravity.CENTER))
+        bottom.addView(pad5, LinearLayout.LayoutParams(dp(166), dp(166)))
+        val side = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun sideRow(vararg v: View) {
+            val r = LinearLayout(this)
+            v.forEach { r.addView(it) }
+            side.addView(r, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(3), 0, dp(3)) })
+        }
+        sideRow(btn("Geri") { send("K BACK") }, btn("Menü") { send("K MENU") })
+        sideRow(btn("Ana sayfa") { send("K HOME") }, btn("Yenile") { send("K REFRESH") })
+        sideRow(btn("Adres") { addressDialog() }, btn("⌨ Klavye") { showKeyboard() })
+        bottom.addView(side, LinearLayout.LayoutParams(0, dp(166), 1f).apply { leftMargin = dp(8) })
+        root.addView(bottom, LinearLayout.LayoutParams(-1, -2))
 
         val row3 = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         input = EditText(this).apply {
@@ -251,6 +258,30 @@ class RemoteActivity : Activity() {
             textSize = 18f
             setPadding(dp(16), 0, dp(16), 0)
             layoutParams = LinearLayout.LayoutParams(-2, dp(46)).apply { setMargins(dp(6), 0, 0, 0) }
+        }
+    }
+
+    /** Yuvarlak kumanda tuşu; repeat = basılı tutunca tekrarlar. */
+    private fun round(t: String, cmd: String, repeat: Boolean) = TextView(this).apply {
+        text = t
+        setTextColor(Color.WHITE)
+        textSize = 20f
+        gravity = Gravity.CENTER
+        includeFontPadding = false
+        setBackgroundResource(R.drawable.round_bg)
+        isClickable = true
+        if (!repeat) setOnClickListener { buzz(); send(cmd) }
+        else {
+            val again = object : Runnable {
+                override fun run() { send(cmd); main.postDelayed(this, 110) }
+            }
+            setOnTouchListener { v, e ->
+                when (e.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> { v.isPressed = true; buzz(); send(cmd); main.postDelayed(again, 420) }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { v.isPressed = false; main.removeCallbacks(again) }
+                }
+                true
+            }
         }
     }
 

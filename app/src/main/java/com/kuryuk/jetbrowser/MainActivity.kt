@@ -155,10 +155,10 @@ class MainActivity : Activity() {
 
     private fun wakePermissionPanel() {
         openPanel("Telefondan tam kontrol",
-            "Telefonla TV'yi kumandasız yönetmek için (JetBrowser'ı uzaktan açma, uygulamalar arasında geçiş, " +
-                "ana ekran, geri, TV'yi kapatma) bu TV'de bir kez izin vermeniz gerekiyor:\n\n" +
+            "Telefonla TV'yi kumandasız yönetmek için bu TV'de bir kez izin vermeniz gerekiyor:\n\n" +
                 "Erişilebilirlik ayarlarında JetBrowser'ı bulun ve açın.\n\n" +
-                "Ekrandaki içerik okunmaz; sadece bu komutlar için kullanılır.",
+                "Bununla touchpad imleci, ok tuşları ve klavye tüm TV'de çalışır. " +
+                "Hiçbir veri kaydedilmez ya da TV dışına gönderilmez.",
             null, listOf(Pair("Sonra") { }, Pair("Ayarları aç") {
                 try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
                 catch (_: Exception) { toast("TV Ayarları > Erişilebilirlik bölümünden JetBrowser'ı açın") }

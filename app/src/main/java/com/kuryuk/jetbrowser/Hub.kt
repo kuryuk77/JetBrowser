@@ -59,6 +59,13 @@ object Hub {
         server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > Tam kontrol izni")
     }
 
+    private var lastHint = 0L
+    /** Aynı uyarıyı sık sık göndermemek için. */
+    private fun hint(msg: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastHint > 8000) { lastHint = now; server?.send("N $msg") }
+    }
+
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
     private fun handle(line: String) {
@@ -76,7 +83,16 @@ object Hub {
             "PWR" -> power()
             "M", "C", "LD", "LU", "SD", "S", "SE" ->
                 if (!foreground && acc != null) acc.pointer(cmd, arg) else onCommand?.invoke(line)
-            "K" -> if (arg == "BACK" && !foreground && acc != null) acc.back() else onCommand?.invoke(line)
+            "T" -> if (!foreground && acc != null) { if (!acc.type(URLDecoder.decode(arg, "UTF-8"), 0)) hint("Önce TV'de bir yazı alanı seçin") }
+                else onCommand?.invoke(line)
+            "B" -> if (!foreground && acc != null) acc.type("", arg.toIntOrNull() ?: 1) else onCommand?.invoke(line)
+            "K" -> if (!foreground && acc != null) when (arg) {
+                "BACK" -> acc.back()
+                "UP", "DOWN", "LEFT", "RIGHT", "CENTER" ->
+                    if (!acc.dpad(arg)) hint("Bu ekranda ok tuşları çalışmıyor, touchpad'i deneyin")
+                "ENTER" -> acc.enter()
+                else -> onCommand?.invoke(line)
+            } else onCommand?.invoke(line)
             else -> onCommand?.invoke(line)
         }
     }

@@ -7,6 +7,8 @@ import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Point
 import android.os.Build
+import android.os.Bundle
+import android.view.accessibility.AccessibilityNodeInfo
 import android.os.Handler
 import android.os.Looper
 import android.view.View
@@ -16,7 +18,7 @@ import kotlin.math.hypot
 
 /**
  * TV'de sistem genelinde kumanda: imleç + dokunma, uygulama geçişi, ana ekran, geri, uyutma.
- * Ekran içeriğini okumaz.
+ * Ok tuşları ve yazma için yalnızca odaklı öğeye erişir; hiçbir şeyi kaydetmez ya da göndermez.
  */
 class JetAccess : AccessibilityService() {
     /** En son kullanılan uygulamalar, en yenisi başta. */
@@ -134,7 +136,7 @@ class JetAccess : AccessibilityService() {
         }
         when (cmd) {
             "M" -> { val (x, y) = xy(); v.moveBy(x * d, y * d) }
-            "C" -> gesture(v.cx, v.cy, v.cx, v.cy, 60)
+            "C" -> gesture(v.cx, v.cy, v.cx, v.cy, 60) { askKeyboardIfEditing() }
             "LD" -> gesture(v.cx, v.cy, v.cx, v.cy, 800)
             "SD" -> { sx = v.cx; sy = v.cy; ax = 0f; ay = 0f; endPending = false }
             "S" -> {
@@ -145,6 +147,78 @@ class JetAccess : AccessibilityService() {
             "SE" -> { endPending = busy; flush() }
         }
     }
+
+    // ------------------------------------------------------------------ ok tuşları ve klavye
+
+    private fun focused(): AccessibilityNodeInfo? =
+        try { rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) } catch (_: Exception) { null }
+
+    /** Odak bir yazı alanındaysa telefona "klavyeyi aç" de. */
+    private fun askKeyboardIfEditing() {
+        h.postDelayed({ if (focused()?.isEditable == true) Hub.server?.send("F") }, 500)
+    }
+
+    private fun firstFocusable(n: AccessibilityNodeInfo?, depth: Int = 0): AccessibilityNodeInfo? {
+        if (n == null || depth > 25) return null
+        if (n.isFocusable && n.isVisibleToUser) return n
+        for (i in 0 until n.childCount) firstFocusable(n.getChild(i), depth + 1)?.let { return it }
+        return null
+    }
+
+    /** Kumandanın ok / OK tuşları: odağı taşır ya da odaklı öğeye tıklar. */
+    fun dpad(k: String): Boolean = try {
+        val root = rootInActiveWindow
+        val f = root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (root == null) false
+        else if (f == null) firstFocusable(root)?.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ?: false
+        else if (k == "CENTER") {
+            var n: AccessibilityNodeInfo? = f
+            var hops = 0
+            while (n != null && !n.isClickable && hops < 6) { n = n.parent; hops++ }
+            val ok = (n ?: f).performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            askKeyboardIfEditing()
+            ok
+        } else {
+            val dir = when (k) {
+                "UP" -> View.FOCUS_UP
+                "DOWN" -> View.FOCUS_DOWN
+                "LEFT" -> View.FOCUS_LEFT
+                else -> View.FOCUS_RIGHT
+            }
+            f.focusSearch(dir)?.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ?: false
+        }
+    } catch (_: Exception) { false }
+
+    private var pwNode: AccessibilityNodeInfo? = null
+    private var pwBuf = ""
+
+    /** Telefondan gelen yazıyı odaklı yazı alanına uygular (n = sondan silinecek karakter). */
+    fun type(t: String, n: Int): Boolean = try {
+        val f = focused()
+        if (f == null || !f.isEditable) false
+        else {
+            var cur: String
+            if (f.isPassword) {
+                if (f != pwNode) { pwNode = f; pwBuf = "" }
+                cur = pwBuf
+            } else {
+                cur = if (Build.VERSION.SDK_INT >= 26 && f.isShowingHintText) "" else f.text?.toString() ?: ""
+            }
+            if (n > 0) cur = cur.dropLast(n)
+            cur += t
+            if (f.isPassword) pwBuf = cur
+            f.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, Bundle().apply {
+                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, cur)
+            })
+        }
+    } catch (_: Exception) { false }
+
+    fun enter(): Boolean = try {
+        val f = focused()
+        if (f != null && Build.VERSION.SDK_INT >= 30)
+            f.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+        else false
+    } catch (_: Exception) { false }
 
     override fun onInterrupt() {}
 
