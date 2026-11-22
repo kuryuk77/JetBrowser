@@ -1,8 +1,8 @@
 <resources>
-    <color name="bg">#FF121212</color>
-    <color name="bar">#FF1E1E1E</color>
-    <color name="tile">#FF2A2A2A</color>
-    <color name="accent">#FFE53935</color>
+    <color name="bg">#FF2C2E33</color>
+    <color name="bar">#FF2C2E33</color>
+    <color name="tile">#26FFFFFF</color>
+    <color name="accent">#FFFFC83D</color>
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:colorAccent">@color/accent</item>

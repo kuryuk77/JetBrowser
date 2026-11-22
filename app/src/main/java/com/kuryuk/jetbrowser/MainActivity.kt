@@ -3,7 +3,6 @@ package com.kuryuk.jetbrowser
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.DownloadManager
 import android.app.SearchManager
 import android.app.UiModeManager
@@ -17,7 +16,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -93,7 +96,6 @@ class MainActivity : Activity() {
     private var bypassCursor = false
     private var customView: View? = null
     private var customCallback: WebChromeClient.CustomViewCallback? = null
-    private var activeDialog: AlertDialog? = null
     private val handler = Handler(Looper.getMainLooper())
 
     private var downTime = 0L
@@ -152,9 +154,7 @@ class MainActivity : Activity() {
 
     private fun onFileReceived(f: File) {
         if (f.name.lowercase().endsWith(".apk")) { installApk(f); return }
-        show(builder().setTitle("Dosya alındı").setMessage(f.name)
-            .setPositiveButton("Aç") { _, _ -> openReceived(f) }
-            .setNegativeButton("Tamam", null))
+        openPanel("Dosya alındı", f.name, null, listOf(Pair("Tamam") { }, Pair("Aç") { openReceived(f) }))
     }
 
     private fun openReceived(f: File) {
@@ -234,6 +234,31 @@ class MainActivity : Activity() {
 
     // ------------------------------------------------------------------ arayüz
 
+    private lateinit var topHolder: FrameLayout
+    private lateinit var homeHolder: FrameLayout
+    private lateinit var actionGrid: GridLayout
+    private lateinit var btnHome: View
+    private lateinit var btnBack: View
+    private lateinit var btnRefresh: View
+    private lateinit var btnAdd: View
+    private val panels = mutableListOf<View>()
+
+    /** Cam görünümlü arka plan: yarı saydam dolgu, ince çizgi; odakta sarı çerçeve. */
+    private fun glassBg(oval: Boolean, radiusDp: Int = 16): Drawable {
+        fun shape(fill: Int, stroke: Int, sw: Int) = GradientDrawable().apply {
+            if (oval) shape = GradientDrawable.OVAL else cornerRadius = dp(radiusDp).toFloat()
+            setColor(fill)
+            setStroke(dp(sw), stroke)
+        }
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), shape(SURFACE_FOCUS, ACCENT, 2))
+            addState(intArrayOf(android.R.attr.state_pressed), shape(SURFACE_FOCUS, 0x55FFFFFF, 1))
+            addState(intArrayOf(), shape(SURFACE, 0x2EFFFFFF, 1))
+        }
+    }
+
+    private fun screenW() = resources.displayMetrics.widthPixels
+
     private fun buildUi() {
         root = FrameLayout(this)
         column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -241,18 +266,20 @@ class MainActivity : Activity() {
         bar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            setBackgroundColor(0xFF121212.toInt())
+            setPadding(dp(8), dp(6), dp(8), dp(6))
         }
-        bar.addView(iconBtn(R.drawable.ic_home) { showHome(true) })
-        bar.addView(iconBtn(R.drawable.ic_back) { handleBack() })
-        bar.addView(iconBtn(R.drawable.ic_refresh) { current?.reload() })
+        btnHome = iconBtn(R.drawable.ic_home) { showHome(true) }
+        btnBack = iconBtn(R.drawable.ic_back) { handleBack() }
+        btnRefresh = iconBtn(R.drawable.ic_refresh) { current?.reload() }
+        bar.addView(btnHome)
+        bar.addView(btnBack)
+        bar.addView(btnRefresh)
 
         val urlBox = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundResource(R.drawable.url_bg)
-            setPadding(dp(14), 0, dp(2), 0)
+            background = glassBg(false, 24)
+            setPadding(dp(16), 0, dp(2), 0)
         }
         urlEdit = EditText(this).apply {
             hint = "Ara veya adres yaz"
@@ -260,8 +287,9 @@ class MainActivity : Activity() {
             imeOptions = EditorInfo.IME_ACTION_GO or EditorInfo.IME_FLAG_NO_EXTRACT_UI
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             background = null
+            setPadding(0, 0, 0, 0)
             setTextColor(Color.WHITE)
-            setHintTextColor(0xFF9E9E9E.toInt())
+            setHintTextColor(TEXT_DIM)
             textSize = 16f
             setSelectAllOnFocus(true)
             setOnEditorActionListener { _, id, ev ->
@@ -269,40 +297,45 @@ class MainActivity : Activity() {
                 if (id == EditorInfo.IME_ACTION_GO || enter) { go(text.toString()); true } else false
             }
         }
-        urlBox.addView(urlEdit, LinearLayout.LayoutParams(0, dp(44), 1f))
-        urlBox.addView(iconBtn(R.drawable.ic_mic) { voice() })
-        bar.addView(urlBox, LinearLayout.LayoutParams(0, dp(48), 1f).apply { setMargins(dp(4), 0, dp(4), 0) })
+        urlBox.addView(urlEdit, LinearLayout.LayoutParams(0, dp(46), 1f))
+        val mic = ImageButton(this).apply {
+            setImageResource(R.drawable.ic_mic)
+            background = glassBg(true)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setOnClickListener { voice() }
+        }
+        urlBox.addView(mic, LinearLayout.LayoutParams(dp(38), dp(38)).apply { rightMargin = dp(3) })
+        bar.addView(urlBox, LinearLayout.LayoutParams(0, dp(48), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
 
-        bar.addView(iconBtn(R.drawable.ic_add) { newTab(false); showHome(false) })
+        btnAdd = iconBtn(R.drawable.ic_add) { newTab(false); showHome(false) }
+        bar.addView(btnAdd)
         tabCount = TextView(this).apply {
             text = "0"
             setTextColor(Color.WHITE)
-            textSize = 15f
+            textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            isFocusable = true
-            isClickable = true
             background = GradientDrawable().apply {
-                setStroke(dp(2), Color.WHITE); cornerRadius = dp(6).toFloat()
+                setStroke(dp(2), Color.WHITE); cornerRadius = dp(5).toFloat()
             }
-            setOnClickListener { tabsDialog() }
         }
         val tabWrap = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.btn_bg)
+            background = glassBg(true)
             isFocusable = true
             isClickable = true
             setOnClickListener { tabsDialog() }
-            addView(tabCount, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+            addView(tabCount, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
         }
-        tabCount.isFocusable = false
-        tabCount.isClickable = false
-        bar.addView(tabWrap, LinearLayout.LayoutParams(dp(46), dp(46)))
+        bar.addView(tabWrap, LinearLayout.LayoutParams(dp(44), dp(44)).apply { setMargins(dp(3), 0, dp(3), 0) })
         bar.addView(iconBtn(R.drawable.ic_more) { showMenu() })
-        column.addView(bar, LinearLayout.LayoutParams(-1, -2))
+
+        topHolder = FrameLayout(this)
+        column.addView(topHolder, LinearLayout.LayoutParams(-1, -2))
 
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
-            progressTintList = ColorStateList.valueOf(0xFFE53935.toInt())
+            progressTintList = ColorStateList.valueOf(ACCENT)
             visibility = View.INVISIBLE
         }
         column.addView(progress, LinearLayout.LayoutParams(-1, dp(3)))
@@ -327,12 +360,33 @@ class MainActivity : Activity() {
 
     private fun iconBtn(res: Int, onClick: () -> Unit): View = ImageButton(this).apply {
         setImageResource(res)
-        setBackgroundResource(R.drawable.btn_bg)
+        background = glassBg(true)
         scaleType = ImageView.ScaleType.CENTER_INSIDE
         setPadding(dp(10), dp(10), dp(10), dp(10))
         isFocusable = true
         setOnClickListener { onClick() }
-        layoutParams = LinearLayout.LayoutParams(dp(46), dp(46))
+        layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply { setMargins(dp(3), 0, dp(3), 0) }
+    }
+
+    /** Adres çubuğu ana ekranda logonun altında, sayfa açıkken en üstte durur. */
+    private fun placeBar(home: Boolean) {
+        val target = if (home) homeHolder else topHolder
+        if (bar.parent !== target) {
+            (bar.parent as? ViewGroup)?.removeView(bar)
+            target.addView(bar, FrameLayout.LayoutParams(-1, -2))
+        }
+        val wide = screenW() / density >= 600
+        btnHome.visibility = if (home) View.GONE else View.VISIBLE
+        val extra = if (wide && !home) View.VISIBLE else View.GONE
+        btnBack.visibility = extra
+        btnRefresh.visibility = extra
+        btnAdd.visibility = extra
+        homeHolder.layoutParams = homeHolder.layoutParams.apply { width = min(screenW() - dp(16), dp(680)) }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        root.post { placeBar(showingHome); if (showingHome) refreshHome() }
     }
 
     private fun buildHome() {
@@ -340,26 +394,59 @@ class MainActivity : Activity() {
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(12), dp(28), dp(12), dp(24))
+            setPadding(dp(8), dp(36), dp(8), dp(24))
         }
         val logo = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        logo.addView(ImageView(this).apply { setImageResource(R.drawable.ic_jet) }, LinearLayout.LayoutParams(dp(72), dp(72)))
+        logo.addView(ImageView(this).apply { setImageResource(R.drawable.ic_jet) }, LinearLayout.LayoutParams(dp(64), dp(64)))
         logo.addView(TextView(this).apply {
-            text = "JetBrowser"
-            textSize = 34f
+            text = SpannableString("JetBrowser").apply { setSpan(ForegroundColorSpan(ACCENT), 0, 3, 0) }
+            textSize = 32f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
-            setPadding(dp(8), 0, 0, 0)
+            setPadding(dp(6), 0, 0, 0)
         })
         col.addView(logo)
 
-        dialGrid = GridLayout(this)
-        col.addView(dialGrid, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(28) })
+        homeHolder = FrameLayout(this)
+        col.addView(homeHolder, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20) })
 
-        val actions = GridLayout(this).apply { columnCount = 4 }
+        dialGrid = GridLayout(this)
+        col.addView(dialGrid, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(24) })
+
+        actionGrid = GridLayout(this)
+        col.addView(actionGrid, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(16) })
+        homeView.addView(col)
+    }
+
+    private fun labelView(t: String) = TextView(this).apply {
+        text = t
+        setTextColor(0xFFE6E6E6.toInt())
+        textSize = 12.5f
+        maxLines = 1
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        gravity = Gravity.CENTER
+        setPadding(dp(2), dp(6), dp(2), 0)
+    }
+
+    private fun refreshHome() {
+        val avail = screenW() - dp(16)
+        val cols = (avail / dp(104)).coerceIn(4, 8)
+        val cell = min(avail / cols, dp(112))
+
+        dialGrid.removeAllViews()
+        dialGrid.columnCount = cols
+        store.speedDial.forEachIndexed { i, s ->
+            val t = dialTile(cell, iconFor(s.url), s.title) { go(s.url) }
+            t.setOnLongClickListener { dialOptions(i); true }
+            dialGrid.addView(t)
+        }
+        dialGrid.addView(dialTile(cell, null, "Ekle", plus = true) { editDialDialog(-1, "", current?.url ?: "") })
+
+        actionGrid.removeAllViews()
+        actionGrid.columnCount = if (cols >= 8) 8 else 4
         val items = listOf(
             Triple(R.drawable.ic_mouse, "Kumanda") { remoteTile() },
             Triple(R.drawable.ic_star, "Yer imleri") { bookmarksDialog() },
@@ -370,85 +457,50 @@ class MainActivity : Activity() {
             Triple(R.drawable.ic_tune, "Özelleştir") { customizeDialog() },
             Triple(R.drawable.ic_settings, "Ayarlar") { settingsDialog() }
         )
-        items.forEach { (ic, label, action) -> actions.addView(actionTile(ic, label, action)) }
-        col.addView(actions, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(20) })
-        homeView.addView(col)
+        items.forEach { (ic, label, action) -> actionGrid.addView(actionTile(cell, ic, label, action)) }
     }
 
-    private fun actionTile(icon: Int, label: String, onClick: () -> Unit): View {
+    private fun tile(cell: Int, box: View, boxSize: Int, title: String, onClick: () -> Unit): LinearLayout {
         val v = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setBackgroundResource(R.drawable.btn_bg)
             isFocusable = true
             isClickable = true
-            setPadding(dp(4), dp(8), dp(4), dp(8))
+            setPadding(0, dp(8), 0, dp(8))
             setOnClickListener { onClick() }
         }
+        box.isDuplicateParentStateEnabled = true
+        v.addView(box, LinearLayout.LayoutParams(boxSize, boxSize))
+        v.addView(labelView(title), LinearLayout.LayoutParams(-1, -2))
+        v.layoutParams = GridLayout.LayoutParams().apply { width = cell }
+        return v
+    }
+
+    private fun actionTile(cell: Int, icon: Int, label: String, onClick: () -> Unit): View {
         val box = ImageView(this).apply {
             setImageResource(icon)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = GradientDrawable().apply {
-                setStroke(dp(2), 0xFF555555.toInt()); cornerRadius = dp(12).toFloat()
-            }
+            background = glassBg(true)
         }
-        v.addView(box, LinearLayout.LayoutParams(dp(60), dp(60)))
-        v.addView(labelView(label))
-        v.layoutParams = GridLayout.LayoutParams().apply { width = dp(86); setMargins(dp(4), dp(4), dp(4), dp(4)) }
-        return v
+        return tile(cell, box, min(cell - dp(20), dp(60)), label, onClick)
     }
 
-    private fun labelView(t: String) = TextView(this).apply {
-        text = t
-        setTextColor(0xFFE0E0E0.toInt())
-        textSize = 13f
-        maxLines = 1
-        ellipsize = android.text.TextUtils.TruncateAt.END
-        gravity = Gravity.CENTER
-        setPadding(0, dp(6), 0, 0)
-    }
-
-    private fun refreshDial() {
-        dialGrid.removeAllViews()
-        val wDp = resources.displayMetrics.widthPixels / density
-        dialGrid.columnCount = (wDp / 112).toInt().coerceIn(3, 8)
-        store.speedDial.forEachIndexed { i, s ->
-            val t = dialTile(iconFor(s.url), s.title) { go(s.url) }
-            t.setOnLongClickListener { dialOptions(i); true }
-            dialGrid.addView(t)
-        }
-        dialGrid.addView(dialTile(null, "Ekle", plus = true) { editDialDialog(-1, "", current?.url ?: "") })
-    }
-
-    private fun dialTile(icon: Bitmap?, title: String, plus: Boolean = false, onClick: () -> Unit): View {
-        val v = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setBackgroundResource(R.drawable.btn_bg)
-            isFocusable = true
-            isClickable = true
-            setPadding(dp(4), dp(6), dp(4), dp(6))
-            setOnClickListener { onClick() }
-        }
-        val box = FrameLayout(this).apply {
-            background = GradientDrawable().apply { setColor(0xFF2A2A2A.toInt()); cornerRadius = dp(18).toFloat() }
-        }
+    private fun dialTile(cell: Int, icon: Bitmap?, title: String, plus: Boolean = false, onClick: () -> Unit): View {
+        val box = FrameLayout(this).apply { background = glassBg(true) }
         if (icon != null) {
-            box.addView(ImageView(this).apply { setImageBitmap(icon) }, FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER))
+            box.addView(ImageView(this).apply { setImageBitmap(icon) }, FrameLayout.LayoutParams(dp(36), dp(36), Gravity.CENTER))
         } else {
             box.addView(TextView(this).apply {
                 text = if (plus) "+" else title.trim().take(1).uppercase()
-                textSize = 30f
+                textSize = 26f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(if (plus) Color.WHITE else 0xFFE53935.toInt())
+                setTextColor(if (plus) Color.WHITE else ACCENT)
                 gravity = Gravity.CENTER
+                includeFontPadding = false
             }, FrameLayout.LayoutParams(-1, -1))
         }
-        v.addView(box, LinearLayout.LayoutParams(dp(76), dp(76)))
-        v.addView(labelView(title))
-        v.layoutParams = GridLayout.LayoutParams().apply { width = dp(100); setMargins(dp(3), dp(3), dp(3), dp(3)) }
-        return v
+        return tile(cell, box, min(cell - dp(16), dp(72)), title, onClick)
     }
 
     private fun iconFor(url: String): Bitmap? {
@@ -522,6 +574,7 @@ class MainActivity : Activity() {
         val c = current ?: return
         showingHome = false
         homeView.visibility = View.GONE
+        placeBar(false)
         tabs.forEach { it.visibility = if (it === c) View.VISIBLE else View.GONE }
         c.pending?.let { c.pending = null; c.loadUrl(it) }
         if (!urlEdit.hasFocus()) urlEdit.setText(c.url ?: "")
@@ -535,7 +588,8 @@ class MainActivity : Activity() {
         tabs.forEach { it.visibility = View.GONE }
         homeView.visibility = View.VISIBLE
         progress.visibility = View.INVISIBLE
-        refreshDial()
+        placeBar(true)
+        refreshHome()
         urlEdit.setText("")
         homeView.scrollTo(0, 0)
         if (isTv && !remoteConnected) dialGrid.getChildAt(0)?.requestFocus()
@@ -562,6 +616,7 @@ class MainActivity : Activity() {
     }
 
     private fun handleBack(): Boolean {
+        if (panels.isNotEmpty()) { closePanel(panels.last()); return true }
         if (customView != null) { exitFullscreen(); return true }
         if (urlEdit.hasFocus()) {
             urlEdit.clearFocus(); hideKeyboard()
@@ -726,7 +781,7 @@ class MainActivity : Activity() {
     }
 
     private fun cursorKeysActive(): Boolean =
-        cursorMode && !bypassCursor && !bar.hasFocus() &&
+        cursorMode && !bypassCursor && panels.isEmpty() && !bar.hasFocus() &&
             (customView != null || (!showingHome && current != null))
 
     override fun dispatchKeyEvent(e: KeyEvent): Boolean {
@@ -780,7 +835,7 @@ class MainActivity : Activity() {
             val edge = dp(4)
             if (dy < 0 && cursor.cy <= top + edge) {
                 if (web.canScrollVertically(-1)) web.scrollBy(0, -scroll)
-                else { bar.getChildAt(0).requestFocus() }
+                else { btnHome.requestFocus() }
                 return
             }
             if (dy > 0 && cursor.cy >= root.height - edge - 1) { web.scrollBy(0, scroll); return }
@@ -816,7 +871,8 @@ class MainActivity : Activity() {
         if (!remoteConnected) return
         handler.postDelayed({
             hideKeyboard()
-            if (urlEdit.hasFocus()) { remote.send("F"); return@postDelayed }
+            if (currentFocus is EditText) { remote.send("F"); return@postDelayed }
+            if (panels.isNotEmpty()) return@postDelayed
             val w = current
             if (w != null && !showingHome) w.evaluateJavascript(JS_IS_EDIT) { r -> if (r != null && r.contains("1")) remote.send("F") }
         }, 350)
@@ -851,7 +907,6 @@ class MainActivity : Activity() {
                 if (longDown) touchAt(MotionEvent.ACTION_MOVE)
             }
             "C" -> {
-                if (activeDialog?.isShowing == true) { remoteKey("CENTER"); return }
                 touchAt(MotionEvent.ACTION_DOWN)
                 handler.postDelayed({ touchAt(MotionEvent.ACTION_UP); afterClick() }, 40)
             }
@@ -886,12 +941,6 @@ class MainActivity : Activity() {
             "ENTER" -> KeyEvent.KEYCODE_ENTER
             else -> 0
         }
-        val dlg = activeDialog?.takeIf { it.isShowing }
-        if (dlg != null && code != 0) {
-            dlg.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
-            dlg.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
-            return
-        }
         when (k) {
             "BACK" -> if (!handleBack()) moveTaskToBack(true)
             "HOME" -> showHome(true)
@@ -899,7 +948,10 @@ class MainActivity : Activity() {
             "FWD" -> current?.let { if (it.canGoForward()) it.goForward() }
             "MENU" -> showMenu()
             "ENTER" -> {
-                if (urlEdit.hasFocus()) go(urlEdit.text.toString())
+                val f = currentFocus
+                if (f === urlEdit) go(urlEdit.text.toString())
+                else if (f is EditText) hideKeyboard()
+                else if (panels.isNotEmpty()) remoteKey("CENTER")
                 else current?.let {
                     it.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                     it.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
@@ -916,54 +968,159 @@ class MainActivity : Activity() {
 
     /** Telefondan gelen yazıyı TV'deki odaklı alana yaz (n = önce silinecek karakter sayısı). */
     private fun typeText(t: String, n: Int) {
+        val f = currentFocus
+        if (f is EditText) { typeInto(f, t, n); return }
+        if (panels.isNotEmpty()) return
         val w = current
-        if (urlEdit.hasFocus() || showingHome || w == null) { typeIntoUrl(t, n); return }
+        if (showingHome || w == null) { typeInto(urlEdit, t, n); return }
         w.evaluateJavascript(JS_TYPE + "(" + JSONObject.quote(t) + "," + n + ")") { r ->
-            if (r != null && r.contains("none")) typeIntoUrl(t, n)
+            if (r != null && r.contains("none")) typeInto(urlEdit, t, n)
         }
     }
 
-    private fun typeIntoUrl(t: String, n: Int) {
-        if (!urlEdit.hasFocus()) { urlEdit.requestFocus(); urlEdit.setSelection(urlEdit.text.length) }
-        val ed = urlEdit.text
+    private fun typeInto(target: EditText, t: String, n: Int) {
+        if (!target.hasFocus()) { target.requestFocus(); target.setSelection(target.text.length) }
+        val ed = target.text
         var left = n
-        var s = min(urlEdit.selectionStart, urlEdit.selectionEnd).coerceAtLeast(0)
-        val e = max(urlEdit.selectionStart, urlEdit.selectionEnd).coerceAtLeast(0)
+        var s = min(target.selectionStart, target.selectionEnd).coerceAtLeast(0)
+        val e = max(target.selectionStart, target.selectionEnd).coerceAtLeast(0)
         if (left > 0 && e > s) { ed.delete(s, e); left-- }
         if (left > 0) { val from = max(0, s - left); ed.delete(from, s); s = from }
         if (t.isNotEmpty()) {
-            val a = min(urlEdit.selectionStart, urlEdit.selectionEnd).coerceAtLeast(0)
-            val b = max(urlEdit.selectionStart, urlEdit.selectionEnd).coerceAtLeast(0)
+            val a = min(target.selectionStart, target.selectionEnd).coerceAtLeast(0)
+            val b = max(target.selectionStart, target.selectionEnd).coerceAtLeast(0)
             ed.replace(a, b, t)
         }
         hideKeyboard()
     }
 
-    // ------------------------------------------------------------------ menüler ve diyaloglar
+    // ------------------------------------------------------------------ cam paneller (menü ve listeler)
 
-    private fun builder() = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-
-    private fun show(b: AlertDialog.Builder): AlertDialog {
-        val d = b.show()
-        activeDialog = d
-        return d
+    private fun openPanel(title: String, message: String?, body: View?, buttons: List<Pair<String, () -> Unit>>): View {
+        val scrim = FrameLayout(this).apply {
+            setBackgroundColor(0x8C000000.toInt())
+            isClickable = true
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            isClickable = true
+            setPadding(dp(14), dp(16), dp(14), dp(12))
+            background = GradientDrawable().apply {
+                setColor(GLASS_STRONG); cornerRadius = dp(26).toFloat(); setStroke(dp(1), 0x33FFFFFF)
+            }
+        }
+        card.addView(TextView(this).apply {
+            text = title
+            textSize = 20f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            setPadding(dp(8), 0, dp(8), dp(10))
+        })
+        val inner = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        if (message != null) inner.addView(TextView(this).apply {
+            text = message
+            textSize = 15f
+            setTextColor(TEXT_DIM)
+            setLineSpacing(0f, 1.15f)
+            setPadding(dp(8), dp(2), dp(8), dp(10))
+        })
+        if (body != null) inner.addView(body, LinearLayout.LayoutParams(-1, -2))
+        val scroll = ScrollView(this).apply { addView(inner) }
+        card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        if (buttons.isNotEmpty()) {
+            val row = LinearLayout(this).apply { gravity = Gravity.END; setPadding(0, dp(10), 0, 0) }
+            buttons.forEach { (t, action) ->
+                row.addView(TextView(this).apply {
+                    text = t
+                    textSize = 15f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(ACCENT)
+                    gravity = Gravity.CENTER
+                    maxLines = 1
+                    setPadding(dp(18), dp(11), dp(18), dp(11))
+                    background = glassBg(false, 24)
+                    isFocusable = true
+                    isClickable = true
+                    setOnClickListener { closePanel(scrim); action() }
+                }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
+            }
+            card.addView(row, LinearLayout.LayoutParams(-1, -2))
+        }
+        scrim.setOnClickListener { closePanel(scrim) }
+        scrim.addView(card, FrameLayout.LayoutParams(min(screenW() - dp(28), dp(540)), -2, Gravity.CENTER).apply {
+            topMargin = dp(28); bottomMargin = dp(28)
+        })
+        (panels.lastOrNull() as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        column.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        hideKeyboard()
+        root.addView(scrim, root.indexOfChild(cursor), FrameLayout.LayoutParams(-1, -1))
+        panels.add(scrim)
+        scrim.post { card.getFocusables(View.FOCUS_DOWN).firstOrNull()?.requestFocus() }
+        updateCursorVisibility()
+        return scrim
     }
 
-    private fun listDialog(
+    private fun closePanel(v: View) {
+        if (!panels.remove(v)) return
+        hideKeyboard()
+        root.removeView(v)
+        val top = panels.lastOrNull() as? ViewGroup
+        if (top != null) top.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+        else {
+            column.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            if (!showingHome) current?.requestFocus()
+            else if (isTv && !remoteConnected) dialGrid.getChildAt(0)?.requestFocus()
+        }
+        updateCursorVisibility()
+    }
+
+    private fun closeAllPanels() = panels.toList().reversed().forEach { closePanel(it) }
+
+    private fun confirm(title: String, message: String, ok: String, action: () -> Unit) =
+        openPanel(title, message, null, listOf(Pair("Vazgeç") { }, Pair(ok, action)))
+
+    private fun listPanel(
         title: String, items: List<String>, onClick: (Int) -> Unit,
-        onLong: ((Int) -> Unit)? = null, configure: (AlertDialog.Builder) -> Unit = {}
-    ): AlertDialog {
-        val b = builder().setTitle(title)
-        if (items.isEmpty()) b.setMessage("Henüz bir şey yok.")
-        else b.setItems(items.toTypedArray()) { _, i -> onClick(i) }
-        configure(b)
-        val d = show(b)
-        if (onLong != null && items.isNotEmpty())
-            d.listView?.setOnItemLongClickListener { _, _, i, _ -> d.dismiss(); onLong(i); true }
-        return d
+        onLong: ((Int) -> Unit)? = null,
+        buttons: List<Pair<String, () -> Unit>> = emptyList(), selected: Int = -1
+    ): View {
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        var panel: View? = null
+        items.forEachIndexed { i, s ->
+            val row = TextView(this).apply {
+                text = if (i == selected) "✓  $s" else s
+                textSize = 16f
+                setTextColor(if (i == selected) ACCENT else Color.WHITE)
+                maxLines = 3
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(dp(16), dp(14), dp(16), dp(14))
+                background = glassBg(false, 16)
+                isFocusable = true
+                isClickable = true
+                setOnClickListener { panel?.let { closePanel(it) }; onClick(i) }
+                if (onLong != null) setOnLongClickListener { panel?.let { closePanel(it) }; onLong(i); true }
+            }
+            list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
+        }
+        val p = openPanel(title, if (items.isEmpty()) "Henüz bir şey yok." else null, list, buttons)
+        panel = p
+        return p
+    }
+
+    private fun field(hintText: String, value: String, uri: Boolean = false) = EditText(this).apply {
+        hint = hintText
+        setText(value)
+        setSingleLine()
+        setTextColor(Color.WHITE)
+        setHintTextColor(TEXT_DIM)
+        background = glassBg(false, 16)
+        setPadding(dp(16), dp(12), dp(16), dp(12))
+        if (uri) inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        showSoftInputOnFocus = !remoteConnected
     }
 
     private fun showMenu() {
+        if (panels.isNotEmpty()) { closeAllPanels(); return }
         val w = current
         val onPage = !showingHome && w != null
         val items = mutableListOf<Pair<String, () -> Unit>>()
@@ -972,6 +1129,7 @@ class MainActivity : Activity() {
         add("Yeni gizli sekme") { newTab(true); showHome(false) }
         add("Sekmeler (${tabs.size})") { tabsDialog() }
         if (onPage && w != null) {
+            add("Yenile") { w.reload() }
             add("İleri") { if (w.canGoForward()) w.goForward() }
             add("Yakınlaştır") { w.zoomIn() }
             add("Uzaklaştır") { w.zoomOut() }
@@ -986,25 +1144,25 @@ class MainActivity : Activity() {
         add("İndirilenler") { downloadsDialog() }
         add("Ayarlar") { settingsDialog() }
         add("Çıkış") { finishAndRemoveTask() }
-        listDialog("Menü", items.map { it.first }, { items[it].second() })
+        listPanel("Menü", items.map { it.first }, { items[it].second() })
     }
 
     private fun onOff(b: Boolean) = if (b) "Açık" else "Kapalı"
 
     private fun tabsDialog() {
         val names = tabs.map { t ->
-            val mark = if (t === current) "● " else ""
-            val inc = if (t.incognito) "[Gizli] " else ""
-            mark + inc + (t.title?.takeIf { it.isNotBlank() } ?: t.url ?: t.pending ?: "Yeni sekme")
+            (if (t.incognito) "[Gizli] " else "") +
+                (t.title?.takeIf { it.isNotBlank() } ?: t.url ?: t.pending ?: "Yeni sekme")
         }
-        listDialog("Sekmeler (silmek için uzun basın)", names, { i ->
+        listPanel("Sekmeler (kapatmak için uzun basın)", names, { i ->
             current = tabs[i]
             val c = tabs[i]
             if (c.url == null && c.pending == null) showHome(false) else showWeb()
-        }, { i -> closeTab(tabs[i]) }) { b ->
-            b.setPositiveButton("Yeni sekme") { _, _ -> newTab(false); showHome(false) }
-            b.setNeutralButton("Tümünü kapat") { _, _ -> tabs.toList().forEach { closeTab(it) } }
-        }
+        }, { i -> closeTab(tabs[i]); if (tabs.isNotEmpty()) tabsDialog() },
+            listOf(
+                Pair("Tümünü kapat") { tabs.toList().forEach { closeTab(it) } },
+                Pair("Yeni sekme") { newTab(false); showHome(false) }
+            ), tabs.indexOf(current))
     }
 
     private fun addBookmark() {
@@ -1019,77 +1177,75 @@ class MainActivity : Activity() {
 
     private fun bookmarksDialog() {
         val bm = store.bookmarks
-        listDialog("Yer imleri (silmek için uzun basın)", bm.map { it.title }, { go(bm[it].url) }, { i ->
+        val buttons = mutableListOf<Pair<String, () -> Unit>>()
+        if (!showingHome && current?.url != null) buttons.add(Pair("Bu sayfayı ekle") { addBookmark() })
+        listPanel("Yer imleri (silmek için uzun basın)", bm.map { it.title }, { go(bm[it].url) }, { i ->
             val l = store.bookmarks; l.removeAt(i); store.bookmarks = l; toast("Silindi"); bookmarksDialog()
-        }) { b -> if (!showingHome && current?.url != null) b.setPositiveButton("Bu sayfayı ekle") { _, _ -> addBookmark() } }
+        }, buttons)
     }
 
     private fun historyDialog() {
         val h = store.history.take(200)
-        listDialog("Geçmiş", h.map { it.title + "\n" + it.url }, { go(h[it].url) }, { i ->
+        listPanel("Geçmiş", h.map { it.title + "\n" + it.url }, { go(h[it].url) }, { i ->
             val l = store.history; l.removeAll { it.url == h[i].url }; store.history = l; historyDialog()
-        }) { b -> b.setNeutralButton("Geçmişi temizle") { _, _ -> store.history = mutableListOf(); toast("Geçmiş temizlendi") } }
+        }, listOf(Pair("Geçmişi temizle") { store.history = mutableListOf(); toast("Geçmiş temizlendi") }))
     }
 
     private fun clearDataDialog() {
-        show(builder().setTitle("Verileri temizle")
-            .setMessage("Geçmiş, çerezler, site verileri ve önbellek silinsin mi?")
-            .setPositiveButton("Sil") { _, _ ->
-                store.history = mutableListOf()
-                CookieManager.getInstance().removeAllCookies(null)
-                WebStorage.getInstance().deleteAllData()
-                tabs.forEach { it.clearCache(true); it.clearHistory() }
-                toast("Temizlendi")
-            }
-            .setNegativeButton("Vazgeç", null))
+        confirm("Verileri temizle", "Geçmiş, çerezler, site verileri ve önbellek silinsin mi?", "Sil") {
+            store.history = mutableListOf()
+            CookieManager.getInstance().removeAllCookies(null)
+            WebStorage.getInstance().deleteAllData()
+            tabs.forEach { it.clearCache(true); it.clearHistory() }
+            toast("Temizlendi")
+        }
     }
 
     private fun customizeDialog() {
         val d = store.speedDial
-        listDialog("Hızlı erişim", d.map { it.title + "  —  " + it.url }, { dialOptions(it) }) { b ->
-            b.setPositiveButton("Ekle") { _, _ -> editDialDialog(-1, "", "") }
-        }
+        listPanel("Hızlı erişim", d.map { it.title + "\n" + it.url }, { dialOptions(it) }, null,
+            listOf(Pair("Ekle") { editDialDialog(-1, "", "") }))
     }
 
     private fun dialOptions(i: Int) {
         val d = store.speedDial
         if (i !in d.indices) return
-        listDialog(d[i].title, listOf("Düzenle", "Sil", "Başa taşı"), { c ->
+        listPanel(d[i].title, listOf("Düzenle", "Sil", "Başa taşı"), { c ->
             val l = store.speedDial
             when (c) {
                 0 -> editDialDialog(i, l[i].title, l[i].url)
                 1 -> { l.removeAt(i); store.speedDial = l }
                 2 -> { val s = l.removeAt(i); l.add(0, s); store.speedDial = l }
             }
-            if (showingHome) refreshDial()
+            if (showingHome) refreshHome()
         })
     }
 
     private fun editDialDialog(index: Int, title: String, url: String) {
-        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
-        val t = EditText(this).apply { hint = "Ad"; setText(title); setSingleLine() }
-        val u = EditText(this).apply {
-            hint = "Adres (örn. youtube.com)"; setText(url); setSingleLine()
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-        }
-        box.addView(t); box.addView(u)
-        show(builder().setTitle(if (index < 0) "Hızlı erişime ekle" else "Düzenle").setView(box)
-            .setPositiveButton("Kaydet") { _, _ ->
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val t = field("Ad", title)
+        val u = field("Adres (örn. youtube.com)", url, true)
+        box.addView(t, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(2), dp(4), dp(2), dp(6)) })
+        box.addView(u, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
+        openPanel(if (index < 0) "Hızlı erişime ekle" else "Düzenle", null, box, listOf(
+            Pair("Vazgeç") { },
+            Pair("Kaydet") {
                 val raw = u.text.toString().trim()
-                if (raw.isEmpty()) return@setPositiveButton
-                val full = if (raw.contains("://")) raw else "https://$raw"
-                val name = t.text.toString().trim().ifEmpty { Uri.parse(full).host?.removePrefix("www.") ?: raw }
-                val l = store.speedDial
-                if (index in l.indices) l[index] = Site(name, full) else l.add(Site(name, full))
-                store.speedDial = l
-                if (showingHome) refreshDial()
+                if (raw.isNotEmpty()) {
+                    val full = if (raw.contains("://")) raw else "https://$raw"
+                    val name = t.text.toString().trim().ifEmpty { Uri.parse(full).host?.removePrefix("www.") ?: raw }
+                    val l = store.speedDial
+                    if (index in l.indices) l[index] = Site(name, full) else l.add(Site(name, full))
+                    store.speedDial = l
+                    if (showingHome) refreshHome()
+                }
             }
-            .setNegativeButton("Vazgeç", null))
+        ))
     }
 
     private fun settingsDialog() {
-        val speeds = arrayOf("Yavaş", "Orta", "Hızlı")
-        val zooms = arrayOf(80, 90, 100, 110, 125, 150, 175)
+        val speeds = listOf("Yavaş", "Orta", "Hızlı")
+        val zooms = listOf(80, 90, 100, 110, 125, 150, 175)
         val items = listOf(
             "Arama motoru: " + Store.ENGINES[store.searchEngine.coerceIn(0, 3)],
             "Reklam engelleyici: " + onOff(store.adBlock),
@@ -1102,11 +1258,10 @@ class MainActivity : Activity() {
             "Varsayılan tarayıcı yap",
             "Sürüm: " + (try { packageManager.getPackageInfo(packageName, 0).versionName } catch (_: Exception) { "?" })
         )
-        listDialog("Ayarlar", items, { i ->
+        listPanel("Ayarlar", items, { i ->
             when (i) {
-                0 -> show(builder().setTitle("Arama motoru").setSingleChoiceItems(Store.ENGINES, store.searchEngine) { d, w ->
-                    store.searchEngine = w; d.dismiss(); settingsDialog()
-                })
+                0 -> listPanel("Arama motoru", Store.ENGINES.toList(), { w -> store.searchEngine = w; settingsDialog() },
+                    selected = store.searchEngine)
                 1 -> { store.adBlock = !store.adBlock; settingsDialog() }
                 2 -> {
                     store.popupBlock = !store.popupBlock
@@ -1115,13 +1270,11 @@ class MainActivity : Activity() {
                 }
                 3 -> { toggleDesktop(); settingsDialog() }
                 4 -> { toggleCursor(); settingsDialog() }
-                5 -> show(builder().setTitle("İmleç hızı").setSingleChoiceItems(speeds, store.cursorSpeed - 1) { d, w ->
-                    store.cursorSpeed = w + 1; d.dismiss(); settingsDialog()
-                })
-                6 -> show(builder().setTitle("Yazı boyutu").setSingleChoiceItems(zooms.map { "%$it" }.toTypedArray(),
-                    zooms.indexOf(store.textZoom)) { d, w ->
-                    store.textZoom = zooms[w]; tabs.forEach { it.settings.textZoom = zooms[w] }; d.dismiss(); settingsDialog()
-                })
+                5 -> listPanel("İmleç hızı", speeds, { w -> store.cursorSpeed = w + 1; settingsDialog() },
+                    selected = store.cursorSpeed - 1)
+                6 -> listPanel("Yazı boyutu", zooms.map { "%$it" }, { w ->
+                    store.textZoom = zooms[w]; tabs.forEach { it.settings.textZoom = zooms[w] }; settingsDialog()
+                }, selected = zooms.indexOf(store.textZoom))
                 7 -> remoteTile()
                 8 -> try {
                     startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
@@ -1154,9 +1307,10 @@ class MainActivity : Activity() {
         val msg = "Telefonunuzda \"Jet Kumanda\" uygulamasını açın. TV ile telefon aynı Wi-Fi ağında olmalı.\n\n" +
             "Otomatik bulunmazsa bu adresi girin:\n" + RemoteServer.localIp() + ":" + remote.port +
             "\n\nDurum: " + (if (remoteConnected) "Telefon bağlı" else "Telefon bekleniyor")
-        show(builder().setTitle("Telefon kumandası").setMessage(msg)
-            .setPositiveButton("Tamam", null)
-            .setNeutralButton("TV imleci: " + onOff(cursorMode)) { _, _ -> toggleCursor() })
+        openPanel("Telefon kumandası", msg, null, listOf(
+            Pair("TV imleci: " + onOff(cursorMode)) { toggleCursor() },
+            Pair("Tamam") { }
+        ))
     }
 
     private fun share(url: String?) {
@@ -1177,21 +1331,19 @@ class MainActivity : Activity() {
             return
         }
         val name = URLUtil.guessFileName(url, cd, mime)
-        show(builder().setTitle("İndirilsin mi?").setMessage(name)
-            .setPositiveButton("İndir") { _, _ ->
-                try {
-                    val r = DownloadManager.Request(Uri.parse(url))
-                        .setTitle(name)
-                        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
-                    if (mime != null) r.setMimeType(mime)
-                    CookieManager.getInstance().getCookie(url)?.let { r.addRequestHeader("Cookie", it) }
-                    if (ua != null) r.addRequestHeader("User-Agent", ua)
-                    (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(r)
-                    toast("İndiriliyor: $name")
-                } catch (e: Exception) { toast("İndirme başlatılamadı") }
-            }
-            .setNegativeButton("Vazgeç", null))
+        confirm("İndirilsin mi?", name, "İndir") {
+            try {
+                val r = DownloadManager.Request(Uri.parse(url))
+                    .setTitle(name)
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
+                if (mime != null) r.setMimeType(mime)
+                CookieManager.getInstance().getCookie(url)?.let { r.addRequestHeader("Cookie", it) }
+                if (ua != null) r.addRequestHeader("User-Agent", ua)
+                (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(r)
+                toast("İndiriliyor: $name")
+            } catch (e: Exception) { toast("İndirme başlatılamadı") }
+        }
     }
 
     private fun downloadsDialog() {
@@ -1216,11 +1368,11 @@ class MainActivity : Activity() {
         ids.reverse(); names.reverse()
         val received = (FileShare.dir(this).listFiles() ?: arrayOf()).sortedByDescending { it.lastModified() }
         val labels = received.map { "📥  " + it.name } + names
-        listDialog("İndirilenler (silmek için uzun basın)", labels, { i ->
-            if (i < received.size) { openReceived(received[i]); return@listDialog }
+        listPanel("İndirilenler (silmek için uzun basın)", labels, { i ->
+            if (i < received.size) { openReceived(received[i]); return@listPanel }
             val id = ids[i - received.size]
             val uri = dm.getUriForDownloadedFile(id)
-            if (uri == null) { toast("Dosya hazır değil"); return@listDialog }
+            if (uri == null) { toast("Dosya hazır değil"); return@listPanel }
             try {
                 startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, dm.getMimeTypeForDownloadedFile(id))
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -1258,6 +1410,11 @@ class MainActivity : Activity() {
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 
     companion object {
+        const val ACCENT = 0xFFFFC83D.toInt()
+        const val SURFACE = 0x26FFFFFF
+        const val SURFACE_FOCUS = 0x40FFFFFF
+        const val GLASS_STRONG = 0xEB1E1F23.toInt()
+        const val TEXT_DIM = 0xFFB5B8BE.toInt()
         const val DESKTOP_UA =
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 

@@ -142,7 +142,7 @@ class RemoteActivity : Activity() {
     private fun buildUi(): View {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF121212.toInt())
+            setBackgroundColor(0xFF2C2E33.toInt())
             setPadding(dp(10), dp(10), dp(10), dp(10))
         }
 
@@ -156,10 +156,10 @@ class RemoteActivity : Activity() {
         root.addView(top, LinearLayout.LayoutParams(-1, -2))
 
         val row0 = LinearLayout(this)
-        row0.addView(btn("Dosya gönder") { pickFiles() })
-        row0.addView(btn("TV'yi güncelle") { updateTv() })
+        row0.addView(btn("Dosya gönder") { pickFiles() }.apply { setTextColor(0xFFFFC83D.toInt()) })
+        row0.addView(btn("TV'yi güncelle") { updateTv() }.apply { setTextColor(0xFFFFC83D.toInt()) })
         row0.addView(btn("Cihaz") { chooseDevice() })
-        root.addView(row0, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
+        root.addView(row0, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
 
         val pad = TouchpadView(this) { send(it) }
         root.addView(pad, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(8), 0, dp(8)) })
@@ -188,7 +188,7 @@ class RemoteActivity : Activity() {
             setSingleLine()
             imeOptions = EditorInfo.IME_ACTION_SEND or EditorInfo.IME_FLAG_NO_EXTRACT_UI
             inputType = InputType.TYPE_CLASS_TEXT
-            background = GradientDrawable().apply { setColor(0xFF333333.toInt()); cornerRadius = dp(22).toFloat() }
+            background = GradientDrawable().apply { setColor(0x26FFFFFF); setStroke(dp(1), 0x2EFFFFFF); cornerRadius = dp(22).toFloat() }
             setPadding(dp(16), dp(10), dp(16), dp(10))
             setOnEditorActionListener { _, id, ev ->
                 val enter = ev != null && ev.keyCode == KeyEvent.KEYCODE_ENTER && ev.action == KeyEvent.ACTION_DOWN
@@ -221,14 +221,23 @@ class RemoteActivity : Activity() {
     private fun btn(t: String, weight: Int = 1, onClick: () -> Unit) = TextView(this).apply {
         text = t
         setTextColor(Color.WHITE)
-        textSize = 15f
+        textSize = 14f
         gravity = Gravity.CENTER
-        setPadding(dp(12), dp(8), dp(12), dp(8))
+        maxLines = 1
+        includeFontPadding = false
         setBackgroundResource(R.drawable.tile_bg)
         isClickable = true
         setOnClickListener { buzz(); onClick() }
-        layoutParams = if (weight > 0) LinearLayout.LayoutParams(0, -1, weight.toFloat()).apply { setMargins(dp(3), 0, dp(3), 0) }
-        else LinearLayout.LayoutParams(-2, dp(44)).apply { setMargins(dp(4), 0, 0, 0) }
+        if (weight > 0) {
+            setPadding(dp(4), 0, dp(4), 0)
+            if (Build.VERSION.SDK_INT >= 26)
+                setAutoSizeTextTypeUniformWithConfiguration(9, 15, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+            layoutParams = LinearLayout.LayoutParams(0, -1, weight.toFloat()).apply { setMargins(dp(3), 0, dp(3), 0) }
+        } else {
+            textSize = 18f
+            setPadding(dp(16), 0, dp(16), 0)
+            layoutParams = LinearLayout.LayoutParams(-2, dp(46)).apply { setMargins(dp(6), 0, 0, 0) }
+        }
     }
 
     private fun clearInput() {
@@ -331,8 +340,12 @@ class RemoteActivity : Activity() {
             } catch (_: Exception) {
                 main.post {
                     if (!destroyed) {
-                        setStatus("Bağlanamadı. TV'de JetBrowser açık mı?")
+                        setStatus("TV bekleniyor… (TV'de JetBrowser açık olmalı)")
                         status.setTextColor(Color.WHITE)
+                        // son bağlanılan TV açılana kadar kendiliğinden yeniden dene
+                        main.postDelayed({
+                            if (!connected && !destroyed && connName == name) connect(host, port, name)
+                        }, 3000)
                     }
                 }
             }
@@ -597,15 +610,15 @@ class TouchpadView(ctx: Context, private val out: (String) -> Unit) : View(ctx) 
         }
     }
     private val hint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF777777.toInt(); textSize = 14 * d; textAlign = Paint.Align.CENTER
+        color = 0xFFB5B8BE.toInt(); textSize = 14 * d; textAlign = Paint.Align.CENTER
     }
     private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFAAAAAA.toInt(); textSize = 20 * d; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD
+        color = 0xFFFFC83D.toInt(); textSize = 20 * d; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD
     }
 
     init {
         background = GradientDrawable().apply {
-            setColor(0xFF1E1E1E.toInt()); cornerRadius = 20 * d; setStroke((1 * d).toInt(), 0xFF3A3A3A.toInt())
+            setColor(0x1AFFFFFF); cornerRadius = 24 * d; setStroke((1 * d).toInt(), 0x2EFFFFFF)
         }
     }
 
