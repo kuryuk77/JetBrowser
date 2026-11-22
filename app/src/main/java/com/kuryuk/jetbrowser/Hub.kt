@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import java.io.File
 
 /** Kumanda sunucusunu uygulama süreci boyunca tek yerde tutar; ekran kapalıyken de dinleyebilir. */
@@ -32,10 +33,7 @@ object Hub {
         server?.let { return it }
         val a = ctx.applicationContext
         app = a
-        val s = RemoteServer(a, { cmd ->
-            if (cmd == "W") launch()
-            onCommand?.invoke(cmd)
-        }, { n, name ->
+        val s = RemoteServer(a, { cmd -> handle(cmd) }, { n, name ->
             clientCount = n; clientName = name
             onClients?.invoke(n, name)
         })
@@ -49,6 +47,39 @@ object Hub {
         return s
     }
 
+    /** JetBrowser ekranda mı? (MainActivity bildirir) */
+    var foreground = false
+
+    private fun needAccess() {
+        server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > Tam kontrol izni")
+    }
+
+    private fun handle(cmd: String) {
+        val acc = JetAccess.instance
+        when (cmd) {
+            "W" -> launch()
+            "X" -> if (acc == null) needAccess() else if (!acc.switchApp()) server?.send("N Geçilecek önceki uygulama yok")
+            "GH" -> if (acc == null) needAccess() else acc.home()
+            "PWR" -> power()
+            "K BACK" -> if (!foreground && acc != null) acc.back() else onCommand?.invoke(cmd)
+            else -> onCommand?.invoke(cmd)
+        }
+    }
+
+    /** Ekran kapalıysa uyandırır, açıksa uyutur. */
+    private fun power() {
+        val a = app ?: return
+        val pm = a.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (pm.isInteractive) {
+            val acc = JetAccess.instance
+            if (acc == null) needAccess() else if (!acc.sleep()) server?.send("N Bu TV uzaktan kapatmayı desteklemiyor")
+        } else try {
+            @Suppress("DEPRECATION")
+            pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or
+                PowerManager.ON_AFTER_RELEASE, "jet:wake").acquire(3000)
+        } catch (_: Exception) { }
+    }
+
     fun stop() {
         server?.stop()
         server = null
@@ -57,7 +88,7 @@ object Hub {
 
     /** JetBrowser'ı öne getirir (TV'de uygulama kapalıyken telefondan açmak için). */
     fun launch() {
-        val a = app ?: return
+        val a: Context = JetAccess.instance ?: app ?: return
         try {
             a.startActivity(Intent(a, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

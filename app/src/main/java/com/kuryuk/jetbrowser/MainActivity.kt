@@ -144,7 +144,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun canWake() = Build.VERSION.SDK_INT < 29 || Settings.canDrawOverlays(this)
+    private fun canWake() = JetAccess.instance != null
 
     /** Telefondan "TV'de aç" ile gelindiyse ekranı uyandırmayı dene. */
     private fun wakeScreen(i: Intent?) {
@@ -154,16 +154,14 @@ class MainActivity : Activity() {
     }
 
     private fun wakePermissionPanel() {
-        openPanel("Telefondan açma izni",
-            "JetBrowser kapalıyken telefondaki \"TV'de aç\" düğmesinin çalışması için bu TV'de " +
-                "\"Diğer uygulamaların üzerinde göster\" izni gerekiyor. Açılan listede JetBrowser'ı bulup izni açın.",
-            null, listOf(Pair("Sonra") { }, Pair("İzin ver") {
-                try {
-                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-                } catch (_: Exception) {
-                    try { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)) }
-                    catch (_: Exception) { toast("TV Ayarları > Uygulamalar > Özel uygulama erişimi bölümünden verin") }
-                }
+        openPanel("Telefondan tam kontrol",
+            "Telefonla TV'yi kumandasız yönetmek için (JetBrowser'ı uzaktan açma, uygulamalar arasında geçiş, " +
+                "ana ekran, geri, TV'yi kapatma) bu TV'de bir kez izin vermeniz gerekiyor:\n\n" +
+                "Erişilebilirlik ayarlarında JetBrowser'ı bulun ve açın.\n\n" +
+                "Ekrandaki içerik okunmaz; sadece bu komutlar için kullanılır.",
+            null, listOf(Pair("Sonra") { }, Pair("Ayarları aç") {
+                try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                catch (_: Exception) { toast("TV Ayarları > Erişilebilirlik bölümünden JetBrowser'ı açın") }
             }))
     }
 
@@ -178,6 +176,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        Hub.foreground = true
         val f = pendingApk
         if (f != null && (Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls())) {
             pendingApk = null
@@ -225,6 +224,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
+        Hub.foreground = false
         saveTabs()
         CookieManager.getInstance().flush()
     }
@@ -1346,7 +1346,7 @@ class MainActivity : Activity() {
             "Otomatik bulunmazsa bu adresi girin:\n" + RemoteServer.localIp() + ":" + remote.port +
             "\n\nDurum: " + (if (remoteConnected) "Telefon bağlı" else "Telefon bekleniyor")
         val buttons = mutableListOf<Pair<String, () -> Unit>>()
-        if (!canWake()) buttons.add(Pair("Açma izni") { wakePermissionPanel() })
+        if (!canWake()) buttons.add(Pair("Tam kontrol izni") { wakePermissionPanel() })
         buttons.add(Pair("İmleç: " + onOff(cursorMode)) { toggleCursor() })
         buttons.add(Pair("Tamam") { })
         openPanel("Telefon kumandası", msg, null, buttons)

@@ -156,11 +156,20 @@ class RemoteActivity : Activity() {
         root.addView(top, LinearLayout.LayoutParams(-1, -2))
 
         val row0 = LinearLayout(this)
-        row0.addView(btn("TV'de aç") { if (connected) { send("W"); toast("TV'de JetBrowser açılıyor") } else toast("TV'ye bağlı değil") }.apply { setTextColor(0xFFFFC83D.toInt()) })
-        row0.addView(btn("Dosya gönder") { pickFiles() }.apply { setTextColor(0xFFFFC83D.toInt()) })
-        row0.addView(btn("Güncelle") { updateTv() }.apply { setTextColor(0xFFFFC83D.toInt()) })
+        row0.addView(btn("Dosya gönder") { pickFiles() })
+        row0.addView(btn("TV'yi güncelle") { updateTv() })
         row0.addView(btn("Cihaz") { chooseDevice() })
         root.addView(row0, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+
+        fun tv(label: String, cmd: String) = btn(label) {
+            if (connected) send(cmd) else toast("TV'ye bağlı değil")
+        }.apply { setTextColor(0xFFFFC83D.toInt()) }
+        val rowTv = LinearLayout(this)
+        rowTv.addView(tv("⏻ Güç", "PWR"))
+        rowTv.addView(tv("Tarayıcıyı aç", "W"))
+        rowTv.addView(tv("⇄ Uyg. değiştir", "X"))
+        rowTv.addView(tv("TV ana ekran", "GH"))
+        root.addView(rowTv, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
 
         val pad = TouchpadView(this) { send(it) }
         root.addView(pad, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(0, dp(8), 0, dp(8)) })
@@ -359,6 +368,7 @@ class RemoteActivity : Activity() {
             while (true) {
                 val line = r.readLine() ?: break
                 if (line == "F") main.post { showKeyboard() }
+                else if (line.startsWith("N ")) main.post { Toast.makeText(this, line.substring(2), Toast.LENGTH_LONG).show() }
             }
         } catch (_: Exception) { }
         main.post { if (socket === s) lost() }
