@@ -923,15 +923,35 @@ class MainActivity : Activity() {
             val scroll = root.height / 6
             val edge = dp(4)
             if (dy < 0 && cursor.cy <= top + edge) {
-                if (web.canScrollVertically(-1)) web.scrollBy(0, -scroll)
+                if (web.canScrollVertically(-1)) edgePush(-1)
                 else { btnHome.requestFocus() }
                 return
             }
-            if (dy > 0 && cursor.cy >= root.height - edge - 1) { web.scrollBy(0, scroll); return }
+            if (dy > 0 && cursor.cy >= root.height - edge - 1) { edgePush(1); return }
             if (dx < 0 && cursor.cx <= edge) { if (web.canScrollHorizontally(-1)) web.scrollBy(-scroll, 0); return }
             if (dx > 0 && cursor.cx >= root.width - edge - 1) { if (web.canScrollHorizontally(1)) web.scrollBy(scroll, 0); return }
         }
         cursor.moveBy(dx, dy)
+    }
+
+    // imleç ekranın altına / üstüne dayanınca sayfa yavaşça kayar; itmeyi bırakınca durur
+    private var edgeDir = 0
+    private var edgeUntil = 0L
+    private var edgeRunning = false
+    private val edgeScroll = object : Runnable {
+        override fun run() {
+            val w = current
+            if (w == null || showingHome || customView != null || panels.isNotEmpty() ||
+                SystemClock.uptimeMillis() > edgeUntil) { edgeRunning = false; return }
+            if (w.canScrollVertically(edgeDir)) w.scrollBy(0, edgeDir * dp(5))
+            handler.postDelayed(this, 16)
+        }
+    }
+
+    private fun edgePush(dir: Int) {
+        edgeDir = dir
+        edgeUntil = SystemClock.uptimeMillis() + 300
+        if (!edgeRunning) { edgeRunning = true; handler.post(edgeScroll) }
     }
 
     private fun contentTop(): Int {
@@ -994,6 +1014,8 @@ class MainActivity : Activity() {
                 cursor.centerIfUnset()
                 cursor.moveBy(x * density, y * density)
                 if (longDown) touchAt(MotionEvent.ACTION_MOVE)
+                else if (y > 0 && cursor.cy >= root.height - 2) edgePush(1)
+                else if (y < 0 && cursor.cy <= 1f) edgePush(-1)
             }
             "C" -> {
                 touchAt(MotionEvent.ACTION_DOWN)
