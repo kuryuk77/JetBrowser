@@ -20,7 +20,7 @@ jobs:
       - name: Build
         run: gradle assembleRelease --stacktrace 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk JetBrowser-1.0.${{ github.run_number }}.apk
+        run: cp app/build/outputs/apk/release/app-release.apk JetBrowser-1.0.${{ github.run_number }}.apk && cp app/build/outputs/apk/release/app-release.apk jet.apk
       - uses: actions/upload-artifact@v4
         with:
           name: JetBrowser
@@ -29,7 +29,9 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: JetBrowser 1.0.${{ github.run_number }}
-          files: JetBrowser-*.apk
+          files: |
+            JetBrowser-*.apk
+            jet.apk
       - name: Save status
         if: always()
         run: |
