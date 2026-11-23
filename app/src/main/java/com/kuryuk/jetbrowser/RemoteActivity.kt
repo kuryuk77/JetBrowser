@@ -65,6 +65,8 @@ class RemoteActivity : Activity() {
     private var curPort = REMOTE_PORT
     private val pendingShare = mutableListOf<Uri>()
     private var sendingFiles = false
+    /** TV'nin bildirdiği sürüm; eski TV sürümleri bildirmez (null). */
+    @Volatile private var tvVariant: String? = null
 
     private lateinit var status: TextView
     private lateinit var input: EditText
@@ -385,6 +387,7 @@ class RemoteActivity : Activity() {
                 s.tcpNoDelay = true
                 val w = PrintWriter(OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8), true)
                 w.println("H " + Build.MODEL)
+                tvVariant = null
                 socket = s
                 writer = w
                 curHost = host
@@ -419,6 +422,11 @@ class RemoteActivity : Activity() {
                 val line = r.readLine() ?: break
                 if (line == "F") main.post { showKeyboard() }
                 else if (line.startsWith("L ")) main.post { showTvList(line) }
+                else if (line.startsWith("V ")) {
+                    val p = line.split(' ')
+                    tvVariant = p.getOrNull(2)
+                    main.post { if (connected) setStatus("● Bağlı: " + connName.removePrefix("JetBrowser ") + "  (1.0." + p.getOrNull(1) + ")") }
+                }
                 else if (line.startsWith("N ")) main.post { Toast.makeText(this, line.substring(2), Toast.LENGTH_LONG).show() }
             }
         } catch (_: Exception) { }
@@ -511,14 +519,39 @@ class RemoteActivity : Activity() {
     }
 
     /** Bu telefondaki JetBrowser'ı TV'ye gönderir; TV'de kurulum ekranı açılır. */
-    /** TV, kendi sürümünün en yenisini internetten indirip kurar. */
+    /** TV'yi en son sürüme günceller. Yeni TV sürümleri kendisi indirir; eskilerine telefon indirip gönderir. */
     private fun updateTv() {
         if (!connected) { toast("Önce TV'ye bağlanın"); return }
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-            .setTitle("TV'yi güncelle")
-            .setMessage("TV en son sürümü kendisi indirecek. Kurulum ekranı açılınca \"Yükle\" deyin.")
-            .setPositiveButton("Güncelle") { _, _ -> send("UPD") }
-            .setNegativeButton("Vazgeç", null).show()
+        val b = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert).setTitle("TV'yi güncelle")
+        if (tvVariant != null) {
+            b.setMessage("TV en son sürümü kendisi indirecek. Kurulum ekranı açılınca \"Yükle\" deyin.")
+                .setPositiveButton("Güncelle") { _, _ -> send("UPD") }
+                .setNegativeButton("Vazgeç", null).show()
+        } else {
+            // eski TV sürümü: hangi tür kurulu olduğunu bildiremiyor
+            b.setItems(arrayOf("Tam sürüm (tüm TV'de imleç ve klavye)", "Normal sürüm")) { _, i ->
+                downloadAndSend(if (i == 0) "jet-full.apk" else "jet.apk")
+            }.show()
+        }
+    }
+
+    private fun downloadAndSend(name: String) {
+        toast("En son sürüm indiriliyor…")
+        Thread {
+            val f = try {
+                val c = java.net.URL("https://github.com/kuryuk77/jetbrowser/releases/latest/download/$name")
+                    .openConnection() as java.net.HttpURLConnection
+                c.connectTimeout = 15000; c.readTimeout = 30000; c.instanceFollowRedirects = true
+                if (c.responseCode != 200) throw java.io.IOException()
+                val out = File(cacheDir, "send_update.apk")
+                c.inputStream.use { i -> out.outputStream().use { i.copyTo(it) } }
+                out
+            } catch (_: Exception) { null }
+            main.post {
+                if (f == null) toast("İndirilemedi. İnterneti kontrol edin")
+                else sendItems(listOf(Outgoing("JetBrowser-guncelleme.apk", f.length()) { FileInputStream(f) }))
+            }
+        }.start()
     }
 
     private fun sendItems(items: List<Outgoing>) {

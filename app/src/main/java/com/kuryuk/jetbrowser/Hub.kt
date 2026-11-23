@@ -41,6 +41,11 @@ object Hub {
         val a = ctx.applicationContext
         app = a
         val s = RemoteServer(a, { cmd -> handle(cmd) }, { n, name ->
+            if (n > clientCount || n > 0) {
+                @Suppress("DEPRECATION")
+                val build = try { a.packageManager.getPackageInfo(a.packageName, 0).versionCode } catch (_: Exception) { 0 }
+                server?.send("V $build " + if (hasAccessBuild(a)) "full" else "lite")
+            }
             clientCount = n; clientName = name
             onClients?.invoke(n, name)
         })
