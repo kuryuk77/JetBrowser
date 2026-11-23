@@ -717,7 +717,7 @@ class MainActivity : Activity() {
 
     private inner class Client(val tab: JetWebView) : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-            handleUrl(view, request.url.toString(), request.hasGesture() || !request.isForMainFrame)
+            handleUrl(view, request.url.toString(), request.hasGesture())
 
         @Deprecated("Deprecated in Java")
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = handleUrl(view, url, true)
@@ -755,14 +755,29 @@ class MainActivity : Activity() {
             intent.addCategory(Intent.CATEGORY_BROWSABLE)
             intent.component = null
             intent.selector = null
-            try {
-                startActivity(intent)
-            } catch (e: ActivityNotFoundException) {
-                val fb = intent.getStringExtra("browser_fallback_url")
-                if (fb != null) view.loadUrl(fb) else toast("Bunu açacak uygulama yok")
-            }
+            externalOpen(view, intent)
         } catch (_: Exception) { toast("Açılamadı") }
         return true
+    }
+
+    /** Sayfa başka bir uygulama açmak isterse sistemin "Şununla aç" penceresi yerine kendi panelimizde sor. */
+    private fun externalOpen(view: WebView, intent: Intent) {
+        if (panels.isNotEmpty()) return
+        val fb = intent.getStringExtra("browser_fallback_url")
+        val apps = try {
+            packageManager.queryIntentActivities(intent, 0)
+                .filter { it.activityInfo.packageName != packageName && it.activityInfo.exported }
+        } catch (_: Exception) { emptyList() }
+        if (apps.isEmpty()) {
+            if (fb != null) view.loadUrl(fb) else toast("Bunu açacak uygulama yok")
+            return
+        }
+        listPanel("Sayfa başka uygulama açmak istiyor", apps.map { it.loadLabel(packageManager).toString() }, { i ->
+            try {
+                startActivity(Intent(intent).setClassName(apps[i].activityInfo.packageName, apps[i].activityInfo.name)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: Exception) { toast("Açılamadı") }
+        }, null, listOf(Pair("Vazgeç") { }))
     }
 
     private inner class Chrome(val tab: JetWebView) : WebChromeClient() {
