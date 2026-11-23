@@ -511,16 +511,13 @@ class RemoteActivity : Activity() {
     }
 
     /** Bu telefondaki JetBrowser'ı TV'ye gönderir; TV'de kurulum ekranı açılır. */
+    /** TV, kendi sürümünün en yenisini internetten indirip kurar. */
     private fun updateTv() {
-        if (curHost == null || !connected) { toast("Önce TV'ye bağlanın"); return }
-        val apk = File(applicationInfo.sourceDir)
-        val ver = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (_: Exception) { "" }
+        if (!connected) { toast("Önce TV'ye bağlanın"); return }
         AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
             .setTitle("TV'yi güncelle")
-            .setMessage("Bu telefondaki JetBrowser $ver TV'ye gönderilecek. TV'de kurulum ekranı açılınca \"Yükle\" deyin.")
-            .setPositiveButton("Gönder") { _, _ ->
-                sendItems(listOf(Outgoing("JetBrowser-$ver.apk", apk.length()) { FileInputStream(apk) }))
-            }
+            .setMessage("TV en son sürümü kendisi indirecek. Kurulum ekranı açılınca \"Yükle\" deyin.")
+            .setPositiveButton("Güncelle") { _, _ -> send("UPD") }
             .setNegativeButton("Vazgeç", null).show()
     }
 

@@ -121,6 +121,7 @@ object Hub {
         when (cmd) {
             "W" -> launch()
             "X" -> switchApp()
+            "UPD" -> selfUpdate()
             "X?" -> sendApps()
             "XO" -> openApp(URLDecoder.decode(arg, "UTF-8"))
             "IN?" -> sendInputs()
@@ -191,6 +192,34 @@ object Hub {
 
     private fun openInput(id: String) {
         startFromAnywhere(Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(id)))
+    }
+
+    /** TV kendi sürümünün (normal ya da tam) en yenisini indirir ve kurulum ekranını açar. */
+    private fun selfUpdate() {
+        val a = app ?: return
+        val name = if (hasAccessBuild(a)) "jet-full.apk" else "jet.apk"
+        server?.send("N TV en son sürümü indiriyor…")
+        Thread {
+            var f: File? = null
+            try {
+                val c = java.net.URL("https://github.com/kuryuk77/jetbrowser/releases/latest/download/$name")
+                    .openConnection() as java.net.HttpURLConnection
+                c.connectTimeout = 15000; c.readTimeout = 30000; c.instanceFollowRedirects = true
+                if (c.responseCode != 200) throw java.io.IOException("http " + c.responseCode)
+                val out = File(FileShare.dir(a), "JetBrowser-guncelleme.apk")
+                c.inputStream.use { i -> out.outputStream().use { i.copyTo(it) } }
+                f = out
+            } catch (_: Exception) { }
+            val done = f
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                if (done == null) server?.send("N TV güncellemeyi indiremedi")
+                else {
+                    server?.send("N İndirildi. TV'de \"Yükle\"ye basın")
+                    val l = onFile
+                    if (l != null && foreground) l(1, done.name, done) else { pendingFile = done; launch() }
+                }
+            }
+        }.start()
     }
 
     /** Ekran kapalıysa uyandırır, açıksa uyutur. */
