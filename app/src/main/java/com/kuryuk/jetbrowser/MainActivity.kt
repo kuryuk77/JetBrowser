@@ -144,7 +144,42 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun canWake() = JetAccess.instance != null
+    private fun usageGranted() = try {
+        val ops = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
+        @Suppress("DEPRECATION")
+        ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName) ==
+            android.app.AppOpsManager.MODE_ALLOWED
+    } catch (_: Exception) { false }
+
+    private fun canWake() = if (Hub.hasAccessBuild(this)) JetAccess.instance != null
+        else (Build.VERSION.SDK_INT < 29 || Settings.canDrawOverlays(this)) && usageGranted()
+
+    /** Normal kurulumda iki ayrı izin: üstte gösterme (uzaktan açma) ve kullanım erişimi (önceki uygulama). */
+    private fun litePermissionPanel() {
+        val overlay = Build.VERSION.SDK_INT < 29 || Settings.canDrawOverlays(this)
+        val usage = usageGranted()
+        fun mark(b: Boolean) = if (b) "✓ verildi" else "✗ verilmedi"
+        val buttons = mutableListOf<Pair<String, () -> Unit>>(Pair("Kapat") { })
+        if (!usage) buttons.add(Pair("Kullanım erişimi") {
+            try { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+            catch (_: Exception) { toast("TV Ayarları > Uygulamalar > Özel uygulama erişimi > Kullanım erişimi") }
+        })
+        if (!overlay) buttons.add(Pair("Üstte göster") {
+            try { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) }
+            catch (_: Exception) {
+                try { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)) }
+                catch (_: Exception) { toast("TV Ayarları > Uygulamalar > Özel uygulama erişimi > Diğer uygulamaların üzerinde göster") }
+            }
+        })
+        openPanel("Telefondan kontrol izinleri",
+            "Telefonla uygulama açmak ve uygulamalar arasında geçmek için bu TV'de iki izin gerekiyor:\n\n" +
+                "1) Diğer uygulamaların üzerinde göster: " + mark(overlay) + "\n" +
+                "    (JetBrowser kapalıyken uygulama açabilmek için)\n\n" +
+                "2) Kullanım erişimi: " + mark(usage) + "\n" +
+                "    (\"Önceki uygulama\" ve son kullanılanlar listesi için)\n\n" +
+                "Açılan listede JetBrowser'ı bulup izni açın, sonra geri dönün.",
+            null, buttons)
+    }
 
     /** Telefondan "TV'de aç" ile gelindiyse ekranı uyandırmayı dene. */
     private fun wakeScreen(i: Intent?) {
@@ -154,6 +189,7 @@ class MainActivity : Activity() {
     }
 
     private fun wakePermissionPanel() {
+        if (!Hub.hasAccessBuild(this)) { litePermissionPanel(); return }
         openPanel("Telefondan tam kontrol",
             "Telefonla TV'yi kumandasız yönetmek için bu TV'de bir kez izin vermeniz gerekiyor:\n\n" +
                 "Erişilebilirlik ayarlarında JetBrowser'ı bulun ve açın.\n\n" +
@@ -1346,7 +1382,7 @@ class MainActivity : Activity() {
             "Otomatik bulunmazsa bu adresi girin:\n" + RemoteServer.localIp() + ":" + remote.port +
             "\n\nDurum: " + (if (remoteConnected) "Telefon bağlı" else "Telefon bekleniyor")
         val buttons = mutableListOf<Pair<String, () -> Unit>>()
-        if (!canWake()) buttons.add(Pair("Tam kontrol izni") { wakePermissionPanel() })
+        if (!canWake()) buttons.add(Pair("İzinler") { wakePermissionPanel() })
         buttons.add(Pair("İmleç: " + onOff(cursorMode)) { toggleCursor() })
         buttons.add(Pair("Tamam") { })
         openPanel("Telefon kumandası", msg, null, buttons)

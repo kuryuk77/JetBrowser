@@ -4,6 +4,9 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.app.usage.UsageStatsManager
+import android.content.ComponentName
+import android.provider.Settings
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -56,7 +59,50 @@ object Hub {
         set(v) { field = v; if (v) JetAccess.instance?.hideCursor() }
 
     private fun needAccess() {
-        server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > Tam kontrol izni")
+        server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > izinler")
+    }
+
+    /** Bu kurulumda erişilebilirlik servisi var mı? (tam sürüm) */
+    fun hasAccessBuild(ctx: Context) = try {
+        ctx.packageManager.getServiceInfo(ComponentName(ctx, JetAccess::class.java), 0); true
+    } catch (_: Exception) { false }
+
+    /** Arka plandan uygulama açabilir miyiz? */
+    fun canStart(ctx: Context) = JetAccess.instance != null || foreground ||
+        Build.VERSION.SDK_INT < 29 || Settings.canDrawOverlays(ctx)
+
+    private fun homePackages(ctx: Context): Set<String> = try {
+        ctx.packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+            .map { it.activityInfo.packageName }.toSet() + "com.android.systemui"
+    } catch (_: Exception) { setOf("com.android.systemui") }
+
+    /** Son kullanılan uygulamalar (en yenisi başta): erişilebilirlik varsa oradan, yoksa kullanım erişiminden. */
+    private fun recentApps(ctx: Context): List<String> {
+        JetAccess.instance?.let { return it.history.toList() }
+        return try {
+            val um = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val now = System.currentTimeMillis()
+            val skip = homePackages(ctx)
+            val pm = ctx.packageManager
+            um.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 3 * 86400000L, now)
+                .filter { it.lastTimeUsed > 0 && !skip.contains(it.packageName) }
+                .groupBy { it.packageName }.map { e -> Pair(e.key, e.value.maxOf { it.lastTimeUsed }) }
+                .sortedByDescending { it.second }.map { it.first }
+                .filter { (pm.getLeanbackLaunchIntentForPackage(it) ?: pm.getLaunchIntentForPackage(it)) != null }
+                .take(20)
+        } catch (_: Exception) { emptyList() }
+    }
+
+    private fun switchApp() {
+        val a = app ?: return
+        val acc = JetAccess.instance
+        if (acc != null) { if (!acc.switchApp()) server?.send("N Geçilecek önceki uygulama yok"); return }
+        val r = recentApps(a)
+        if (r.isEmpty()) { server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > izinler > Kullanım erişimi"); return }
+        // ekrandaki uygulama listenin başındadır; JetBrowser ekrandaysa kendisi sayılır
+        val current = if (foreground) a.packageName else r[0]
+        val target = r.firstOrNull { it != current }
+        if (target == null) server?.send("N Geçilecek önceki uygulama yok") else openApp(target)
     }
 
     private var lastHint = 0L
@@ -74,12 +120,13 @@ object Hub {
         val arg = line.substringAfter(' ', "")
         when (cmd) {
             "W" -> launch()
-            "X" -> if (acc == null) needAccess() else if (!acc.switchApp()) server?.send("N Geçilecek önceki uygulama yok")
+            "X" -> switchApp()
             "X?" -> sendApps()
             "XO" -> openApp(URLDecoder.decode(arg, "UTF-8"))
             "IN?" -> sendInputs()
             "IN" -> openInput(URLDecoder.decode(arg, "UTF-8"))
-            "GH" -> if (acc == null) needAccess() else acc.home()
+            "GH" -> if (acc != null) acc.home()
+                else startFromAnywhere(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME))
             "PWR" -> power()
             "M", "C", "LD", "LU", "SD", "S", "SE" ->
                 if (!foreground && acc != null) acc.pointer(cmd, arg) else onCommand?.invoke(line)
@@ -110,7 +157,7 @@ object Hub {
                 }
             } catch (_: Exception) { }
         }
-        val recent = (JetAccess.instance?.history ?: emptyList<String>()).filter { labels.containsKey(it) }
+        val recent = recentApps(a).filter { labels.containsKey(it) }
         val rest = labels.keys.filter { !recent.contains(it) }.sortedBy { labels[it]!!.lowercase() }
         val out = recent.mapIndexed { i, p -> enc((if (i == 0) "● " else "↺ ") + labels[p]) + "=" + enc(p) } +
             rest.map { enc(labels[it]!!) + "=" + enc(it) }
@@ -119,8 +166,9 @@ object Hub {
 
     private fun startFromAnywhere(i: Intent): Boolean {
         val acc = JetAccess.instance
-        if (acc == null && !foreground) { needAccess(); return false }
-        return try { (acc ?: app)?.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }
+        val a = app ?: return false
+        if (!canStart(a)) { needAccess(); return false }
+        return try { (acc ?: a).startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }
         catch (_: Exception) { server?.send("N Açılamadı"); false }
     }
 
@@ -151,7 +199,7 @@ object Hub {
         val pm = a.getSystemService(Context.POWER_SERVICE) as PowerManager
         if (pm.isInteractive) {
             val acc = JetAccess.instance
-            if (acc == null) needAccess() else if (!acc.sleep()) server?.send("N Bu TV uzaktan kapatmayı desteklemiyor")
+            if (acc == null) server?.send("N TV'yi kapatma bu kurulumda yok (açma çalışır)") else if (!acc.sleep()) server?.send("N Bu TV uzaktan kapatmayı desteklemiyor")
         } else try {
             @Suppress("DEPRECATION")
             pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or

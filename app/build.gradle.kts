@@ -26,6 +26,13 @@ android {
         }
     }
 
+    // lite: normal kurulur. full: erişilebilirlik servisi içerir (Play Protect elle kurulumu engelleyebilir).
+    flavorDimensions += "v"
+    productFlavors {
+        create("lite") { dimension = "v" }
+        create("full") { dimension = "v" }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
