@@ -315,6 +315,8 @@ class MainActivity : Activity() {
     private lateinit var btnBack: View
     private lateinit var btnRefresh: View
     private lateinit var btnAdd: View
+    private lateinit var btnTv: ImageButton
+    private lateinit var btnMic: View
     private val panels = mutableListOf<View>()
 
     /** Cam görünümlü arka plan: yarı saydam dolgu, ince çizgi; odakta sarı çerçeve. */
@@ -373,6 +375,7 @@ class MainActivity : Activity() {
         }
         urlBox.addView(urlEdit, LinearLayout.LayoutParams(0, dp(46), 1f))
         val mic = ImageButton(this).apply {
+            btnMic = this
             setImageResource(R.drawable.ic_mic)
             background = glassBg(true)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -382,6 +385,8 @@ class MainActivity : Activity() {
         urlBox.addView(mic, LinearLayout.LayoutParams(dp(38), dp(38)).apply { rightMargin = dp(3) })
         bar.addView(urlBox, LinearLayout.LayoutParams(0, dp(48), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
 
+        btnTv = (iconBtn(R.drawable.ic_tv) { sendToTv() } as ImageButton).apply { setColorFilter(ACCENT) }
+        bar.addView(btnTv)
         btnAdd = iconBtn(R.drawable.ic_add) { newTab(false); showHome(false) }
         bar.addView(btnAdd)
         tabCount = TextView(this).apply {
@@ -455,6 +460,8 @@ class MainActivity : Activity() {
         btnBack.visibility = extra
         btnRefresh.visibility = extra
         btnAdd.visibility = extra
+        btnTv.visibility = if (!home && !isTv) View.VISIBLE else View.GONE
+        btnMic.visibility = if (!home && !wide) View.GONE else View.VISIBLE
         homeHolder.layoutParams = homeHolder.layoutParams.apply { width = min(screenW() - dp(16), dp(680)) }
     }
 
@@ -1240,6 +1247,7 @@ class MainActivity : Activity() {
         add("Yeni gizli sekme") { newTab(true); showHome(false) }
         add("Sekmeler (${tabs.size})") { tabsDialog() }
         if (onPage && w != null) {
+            if (!isTv) add("📺 TV'de aç") { sendToTv() }
             add("Yenile") { w.reload() }
             add("İleri") { if (w.canGoForward()) w.goForward() }
             add("Yakınlaştır") { w.zoomIn() }
@@ -1444,6 +1452,34 @@ class MainActivity : Activity() {
         buttons.add(Pair("İmleç: " + onOff(cursorMode)) { toggleCursor() })
         buttons.add(Pair("Tamam") { })
         openPanel("Telefon kumandası", msg, null, buttons)
+    }
+
+    /** Telefonda açık olan sayfayı tek dokunuşla TV'deki JetBrowser'da açar. */
+    private fun sendToTv() {
+        val url = current?.url
+        if (url == null) { toast("Önce bir sayfa açın"); return }
+        val p = getSharedPreferences("remote", MODE_PRIVATE)
+        val host = p.getString("host", null)
+        if (host == null) {
+            toast("Önce Jet Kumanda ile TV'ye bir kez bağlanın")
+            startActivity(Intent(this, RemoteActivity::class.java))
+            return
+        }
+        val port = p.getInt("port", REMOTE_PORT)
+        toast("TV'ye gönderiliyor…")
+        Thread {
+            val ok = try {
+                java.net.Socket().use { s ->
+                    s.connect(java.net.InetSocketAddress(host, port), 3000)
+                    val w = java.io.PrintWriter(java.io.OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8), true)
+                    w.println("U " + URLEncoder.encode(url, "UTF-8"))
+                    w.flush()
+                    Thread.sleep(200)
+                }
+                true
+            } catch (_: Exception) { false }
+            runOnUiThread { toast(if (ok) "TV'de açıldı ✓" else "TV'ye ulaşılamadı. TV açık mı?") }
+        }.start()
     }
 
     private fun share(url: String?) {

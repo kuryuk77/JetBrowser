@@ -65,6 +65,7 @@ class RemoteActivity : Activity() {
     private var curPort = REMOTE_PORT
     private val pendingShare = mutableListOf<Uri>()
     private var sendingFiles = false
+    private var pendingUrl: String? = null
     /** TV'nin bildirdiği sürüm; eski TV sürümleri bildirmez (null). */
     @Volatile private var tvVariant: String? = null
 
@@ -103,12 +104,19 @@ class RemoteActivity : Activity() {
             Intent.ACTION_SEND -> (i.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let { uris.add(it) }
             Intent.ACTION_SEND_MULTIPLE -> i.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris.addAll(it) }
         }
-        if (uris.isEmpty()) return
+        if (uris.isEmpty()) {
+            // başka tarayıcıdan paylaşılan bağlantı: TV'de aç
+            val link = Regex("https?://\\S+").find(i.getStringExtra(Intent.EXTRA_TEXT) ?: "")?.value ?: return
+            pendingUrl = link
+            if (connected) flushShare() else toast("TV'ye bağlanınca açılacak")
+            return
+        }
         pendingShare.addAll(uris)
         if (connected) flushShare() else toast("TV'ye bağlanınca gönderilecek")
     }
 
     private fun flushShare() {
+        pendingUrl?.let { pendingUrl = null; send("U " + enc(it)); toast("TV'de açılıyor") }
         if (pendingShare.isEmpty()) return
         val list = pendingShare.toList()
         pendingShare.clear()

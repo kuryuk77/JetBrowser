@@ -127,6 +127,13 @@ object Hub {
             "W" -> launch()
             "X" -> switchApp()
             "UPD" -> selfUpdate()
+            "U" -> if (foreground && onCommand != null) onCommand?.invoke(line)
+                else {
+                    // JetBrowser ekranda değil: sayfayla birlikte öne getir
+                    val a = app
+                    if (a != null) startFromAnywhere(Intent(a, MainActivity::class.java)
+                        .setAction(Intent.ACTION_VIEW).setData(android.net.Uri.parse(URLDecoder.decode(arg, "UTF-8"))))
+                }
             "X?" -> sendApps()
             "XO" -> openApp(URLDecoder.decode(arg, "UTF-8"))
             "IN?" -> sendInputs()
