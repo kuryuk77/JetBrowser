@@ -868,11 +868,21 @@ class MainActivity : Activity() {
 
     // ------------------------------------------------------------------ imleç (TV kumandası + telefon)
 
+    // imleç 4 saniye kullanılmazsa gizlenir; ilk harekette geri gelir
+    private var cursorIdle = false
+    private val idleCursor = Runnable { cursorIdle = true; updateCursorVisibility() }
+
+    private fun pokeCursor() {
+        handler.removeCallbacks(idleCursor)
+        handler.postDelayed(idleCursor, 4000)
+        if (cursorIdle) { cursorIdle = false; updateCursorVisibility() }
+    }
+
     private fun updateCursorVisibility() {
         if (!::cursor.isInitialized) return
         val show = remoteConnected ||
             (cursorMode && (customView != null || (!showingHome && current != null)) && !bar.hasFocus())
-        cursor.visibility = if (show) View.VISIBLE else View.GONE
+        cursor.visibility = if (show && !cursorIdle) View.VISIBLE else View.GONE
         if (show) { cursor.centerIfUnset(); cursor.invalidate() }
     }
 
@@ -913,6 +923,7 @@ class MainActivity : Activity() {
     }
 
     private fun keyMove(k: Int, repeat: Int) {
+        pokeCursor()
         cursor.centerIfUnset()
         val base = dp(5) * (store.cursorSpeed + 1) / 2f
         val step = base * (1 + min(repeat, 24) / 4f)
@@ -1007,6 +1018,7 @@ class MainActivity : Activity() {
     }
 
     private fun onRemote(line: String) {
+        pokeCursor()
         val sp = line.indexOf(' ')
         val cmd = if (sp < 0) line else line.substring(0, sp)
         val arg = if (sp < 0) "" else line.substring(sp + 1)
@@ -1017,7 +1029,6 @@ class MainActivity : Activity() {
         when (cmd) {
             "M" -> {
                 val (x, y) = xy()
-                cursor.visibility = View.VISIBLE
                 cursor.centerIfUnset()
                 cursor.moveBy(x * density, y * density)
                 if (longDown) touchAt(MotionEvent.ACTION_MOVE)
