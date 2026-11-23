@@ -194,22 +194,36 @@ object Hub {
         startFromAnywhere(Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(id)))
     }
 
+    private const val RELEASES = "https://github.com/kuryuk77/jetbrowser/releases/latest"
+
+    /** En son yayımlanan sürümün yapı numarası (1.0.N'deki N). Ağ çağrısı yapar; arka planda çağırın. */
+    fun latestBuild(): Int? = try {
+        val c = java.net.URL(RELEASES).openConnection() as java.net.HttpURLConnection
+        c.instanceFollowRedirects = false
+        c.requestMethod = "HEAD"
+        c.connectTimeout = 10000; c.readTimeout = 10000
+        val loc = c.getHeaderField("Location") ?: ""
+        c.disconnect()
+        Regex("/tag/v\\d+\\.\\d+\\.(\\d+)").find(loc)?.groupValues?.get(1)?.toInt()
+    } catch (_: Exception) { null }
+
+    /** Bu kurulumun türüne (normal / tam) uyan en son APK'yı indirir. Arka planda çağırın. */
+    fun downloadLatest(ctx: Context): File? = try {
+        val name = if (hasAccessBuild(ctx)) "jet-full.apk" else "jet.apk"
+        val c = java.net.URL("$RELEASES/download/$name").openConnection() as java.net.HttpURLConnection
+        c.connectTimeout = 15000; c.readTimeout = 30000; c.instanceFollowRedirects = true
+        if (c.responseCode != 200) throw java.io.IOException("http " + c.responseCode)
+        val out = File(FileShare.dir(ctx), "JetBrowser-guncelleme.apk")
+        c.inputStream.use { i -> out.outputStream().use { i.copyTo(it) } }
+        out
+    } catch (_: Exception) { null }
+
     /** TV kendi sürümünün (normal ya da tam) en yenisini indirir ve kurulum ekranını açar. */
     private fun selfUpdate() {
         val a = app ?: return
-        val name = if (hasAccessBuild(a)) "jet-full.apk" else "jet.apk"
         server?.send("N TV en son sürümü indiriyor…")
         Thread {
-            var f: File? = null
-            try {
-                val c = java.net.URL("https://github.com/kuryuk77/jetbrowser/releases/latest/download/$name")
-                    .openConnection() as java.net.HttpURLConnection
-                c.connectTimeout = 15000; c.readTimeout = 30000; c.instanceFollowRedirects = true
-                if (c.responseCode != 200) throw java.io.IOException("http " + c.responseCode)
-                val out = File(FileShare.dir(a), "JetBrowser-guncelleme.apk")
-                c.inputStream.use { i -> out.outputStream().use { i.copyTo(it) } }
-                f = out
-            } catch (_: Exception) { }
+            val f = downloadLatest(a)
             val done = f
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 if (done == null) server?.send("N TV güncellemeyi indiremedi")

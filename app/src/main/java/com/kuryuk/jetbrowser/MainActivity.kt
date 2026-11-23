@@ -1345,6 +1345,7 @@ class MainActivity : Activity() {
             "Yazı boyutu: %" + store.textZoom,
             "Telefon kumandası adresi: " + RemoteServer.localIp() + ":" + remote.port,
             "Varsayılan tarayıcı yap",
+            "Güncellemeyi denetle",
             "Sürüm: " + (try { packageManager.getPackageInfo(packageName, 0).versionName } catch (_: Exception) { "?" })
         )
         listPanel("Ayarlar", items, { i ->
@@ -1368,9 +1369,29 @@ class MainActivity : Activity() {
                 8 -> try {
                     startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
                 } catch (_: Exception) { toast("Bu cihazda açılamadı") }
-                else -> {}
+                else -> checkUpdate()
             }
         })
+    }
+
+    private fun checkUpdate() {
+        toast("Denetleniyor…")
+        @Suppress("DEPRECATION")
+        val mine = try { packageManager.getPackageInfo(packageName, 0).versionCode } catch (_: Exception) { 0 }
+        Thread {
+            val latest = Hub.latestBuild()
+            runOnUiThread {
+                if (latest == null) toast("Denetlenemedi. İnternet bağlantısını kontrol edin")
+                else if (latest <= mine) toast("Güncel: 1.0.$mine")
+                else confirm("Güncelleme var", "Yeni sürüm: 1.0.$latest\nSizdeki: 1.0.$mine", "İndir ve kur") {
+                    toast("İndiriliyor…")
+                    Thread {
+                        val f = Hub.downloadLatest(this)
+                        runOnUiThread { if (f == null) toast("İndirilemedi") else installApk(f) }
+                    }.start()
+                }
+            }
+        }.start()
     }
 
     private fun toggleDesktop() {
