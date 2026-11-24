@@ -64,7 +64,9 @@ object Hub {
         set(v) { field = v; if (v) JetAccess.instance?.hideCursor() }
 
     private fun needAccess() {
-        server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > izinler")
+        val a = app
+        server?.send(if (a != null && hasAccessBuild(a)) "N TV'de izin kapalı: TV Ayarları > Erişilebilirlik > JetBrowser'ı açın"
+            else "N TV'de izin gerekli: JetBrowser > Kumanda > İzinler")
     }
 
     /** Bu kurulumda erişilebilirlik servisi var mı? (tam sürüm) */
@@ -103,7 +105,11 @@ object Hub {
         val acc = JetAccess.instance
         if (acc != null) { if (!acc.switchApp()) server?.send("N Geçilecek önceki uygulama yok"); return }
         val r = recentApps(a)
-        if (r.isEmpty()) { server?.send("N TV'de izin gerekli: JetBrowser > Kumanda > izinler > Kullanım erişimi"); return }
+        if (r.isEmpty()) {
+            server?.send(if (hasAccessBuild(a)) "N TV'de izin kapalı: TV Ayarları > Erişilebilirlik > JetBrowser'ı açın"
+                else "N TV'de izin gerekli: TV Ayarları > Uygulamalar > Özel uygulama erişimi > Kullanım erişimi > JetBrowser")
+            return
+        }
         // ekrandaki uygulama listenin başındadır; JetBrowser ekrandaysa kendisi sayılır
         val current = if (foreground) a.packageName else r[0]
         val target = r.firstOrNull { it != current }
