@@ -1488,6 +1488,15 @@ class MainActivity : Activity() {
                 try {
                     val o = JSONObject(msg.data ?: return@addWebMessageListener)
                     if (o.has("t")) { w.videoTime = o.getDouble("t"); return@addWebMessageListener }
+                    if (o.has("vtt")) {
+                        val l = o.optString("l")
+                        val key = "inline:" + l
+                        synchronized(w.subs) {
+                            w.subs.removeAll { it.url == key }
+                            w.subs.add(Sub(key, l, emptyMap(), o.getString("vtt")))
+                        }
+                        return@addWebMessageListener
+                    }
                     if (o.has("s")) { addSub(w, o.getString("s"), o.optString("l"), o.optString("r").ifEmpty { null }); return@addWebMessageListener }
                     val u = o.optString("u")
                     if (!u.startsWith("http")) return@addWebMessageListener
@@ -1621,12 +1630,17 @@ class MainActivity : Activity() {
         fun isTr(s: Sub) = Regex("(^|[^a-z])(tr|tur|turk|türk|turkce|türkçe|turkish)([^a-z]|$)", RegexOption.IGNORE_CASE)
             .containsMatchIn(s.label + " " + Uri.parse(s.url).path)
         val sj = JSONArray()
-        subs.sortedByDescending { isTr(it) }.take(5).forEach {
-            sj.put(JSONObject().put("u", it.url).put("l", it.label).put("tr", isTr(it)))
+        // aynı altyazının hem dosyası hem okunmuş hali varsa dosyayı tercih et
+        val pick = subs.filter { it.text == null } .ifEmpty { subs }
+        pick.sortedByDescending { isTr(it) }.take(5).forEach {
+            val o = JSONObject().put("u", it.url).put("l", it.label).put("tr", isTr(it))
+            if (it.text != null) o.put("t", it.text) else o.put("h", JSONObject(it.headers as Map<*, *>))
+            sj.put(o)
         }
+        val n = sj.length()
         sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos +
             " " + URLEncoder.encode(sj.toString(), "UTF-8"),
-            "Video TV'de açılıyor ✓")
+            "Video TV'de açılıyor ✓" + if (n > 0) "  ($n altyazı)" else "  (altyazı bulunamadı)")
         current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
     }
 

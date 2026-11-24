@@ -59,7 +59,8 @@ class PlayerActivity : Activity() {
         play(intent)
     }
 
-    private class Sub(val url: String, val label: String, val turkish: Boolean)
+    private class Sub(val url: String, val label: String, val turkish: Boolean,
+                      val text: String?, val headers: Map<String, String>)
 
     /** Yeni videoyu oynat (açıkken gelen yeni video öncekinin yerini alır). */
     fun play(i: Intent?) {
@@ -76,7 +77,10 @@ class PlayerActivity : Activity() {
             val a = JSONArray(i.getStringExtra("subs") ?: "[]")
             for (k in 0 until a.length()) {
                 val s = a.getJSONObject(k)
-                subs.add(Sub(s.getString("u"), s.optString("l"), s.optBoolean("tr")))
+                val h = HashMap<String, String>()
+                s.optJSONObject("h")?.let { o -> o.keys().forEach { h[it] = o.getString(it) } }
+                subs.add(Sub(s.getString("u"), s.optString("l"), s.optBoolean("tr"),
+                    if (s.has("t")) s.getString("t") else null, h))
             }
         } catch (_: Exception) { }
 
@@ -86,6 +90,7 @@ class PlayerActivity : Activity() {
         // altyazıları TV'nin kendisi indirir ve Türkçe karakterleri düzeltir, sonra oynatma başlar
         Thread {
             val files = subs.mapIndexedNotNull { k, s -> fetchSub(s, headers, k)?.let { Pair(s, it) } }
+            if (subs.isNotEmpty() && files.isEmpty()) Hub.server?.send("N TV altyazıyı indiremedi")
             runOnUiThread { if (gen == generation && !isFinishing) start(url, type, pos, headers, files) }
         }.start()
     }
@@ -142,14 +147,16 @@ class PlayerActivity : Activity() {
 
     /** Altyazıyı indirir; UTF-8 değilse Türkçe kodlamadan (Windows-1254) çevirir. */
     private fun fetchSub(s: Sub, headers: Map<String, String>, k: Int): File? = try {
+        val text = s.text ?: run {
         val c = URL(s.url).openConnection() as HttpURLConnection
         c.connectTimeout = 8000; c.readTimeout = 10000; c.instanceFollowRedirects = true
-        headers.forEach { (a, b) -> c.setRequestProperty(a, b) }
+        (s.headers.ifEmpty { headers }).forEach { (a, b) -> c.setRequestProperty(a, b) }
         val bytes = c.inputStream.use { it.readBytes() }
-        val text = try {
+        try {
             Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                 .decode(ByteBuffer.wrap(bytes)).toString()
         } catch (_: Exception) { String(bytes, Charset.forName("windows-1254")) }
+        }
         val clean = text.removePrefix("\uFEFF").trimStart()
         val vtt = clean.startsWith("WEBVTT")
         if (!vtt && !Regex("\\d\\d:\\d\\d:\\d\\d[,.]\\d+\\s*-->").containsMatchIn(clean.take(2000))) null

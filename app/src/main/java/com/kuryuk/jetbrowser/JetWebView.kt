@@ -9,7 +9,8 @@ import java.util.Collections
 
 /** Sayfada yakalanan video akışı (TV'de oynatmak için). */
 /** Sayfada yakalanan altyazı dosyası. */
-data class Sub(val url: String, val label: String, val headers: Map<String, String>)
+/** text: oynatıcıdan doğrudan okunan altyazı içeriği (dosya adresi yoksa) */
+data class Sub(val url: String, val label: String, val headers: Map<String, String>, val text: String? = null)
 
 /** duration: saniye, bilinmiyorsa -1 */
 data class Media(val url: String, val type: String, val headers: Map<String, String>,

@@ -46,6 +46,11 @@
       return r;
     });
   };
+  function p2(n, w) { n = '' + n; while (n.length < w) n = '0' + n; return n; }
+  function ts(s) {
+    var ms = Math.round(s * 1000), h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60;
+    return p2(h, 2) + ':' + p2(m, 2) + ':' + p2(sec, 2) + '.' + p2(ms % 1000, 3);
+  }
   // doğrudan dosya oynatan videolar ve oynatma konumu
   setInterval(function () {
     var tr = document.querySelectorAll('track');
@@ -63,6 +68,21 @@
         e.__jetS = s; rep(s, 'file', e.duration);
       }
       if (!e.paused && e.currentTime > 1 && e.duration > 60) send({ t: e.currentTime });
+      // oynatıcının videoya eklediği altyazı satırlarını doğrudan oku
+      var tt = e.textTracks || [];
+      for (var q = 0; q < tt.length; q++) {
+        var T = tt[q];
+        var cs = null;
+        try { cs = T.cues; } catch (x) {}
+        if (!cs || !cs.length || T.__jetN === cs.length) continue;
+        T.__jetN = cs.length;
+        var out = 'WEBVTT\n\n';
+        for (var c = 0; c < cs.length; c++) {
+          var cu = cs[c];
+          out += ts(cu.startTime) + ' --> ' + ts(cu.endTime) + '\n' + (cu.text || '') + '\n\n';
+        }
+        send({ vtt: out, l: T.label || T.language || ('Altyazı ' + (q + 1)), r: location.href });
+      }
     }
   }, 2000);
 })();

@@ -66,7 +66,7 @@ class RemoteServer(
             if (b < 0) return if (buf.size() == 0) null else buf.toString("UTF-8")
             if (b == '\n'.code) return buf.toString("UTF-8").trimEnd('\r')
             buf.write(b)
-            if (buf.size() > 8192) return null
+            if (buf.size() > 8_000_000) return null
         }
     }
 
