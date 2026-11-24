@@ -62,6 +62,8 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -628,6 +630,7 @@ class MainActivity : Activity() {
         CookieManager.getInstance().setAcceptThirdPartyCookies(w, true)
         w.webViewClient = Client(w)
         w.webChromeClient = Chrome(w)
+        installSniffer(w)
         w.setDownloadListener { url, ua, cd, mime, _ -> download(url, ua, cd, mime) }
         w.visibility = View.GONE
         tabs.add(w)
@@ -739,6 +742,7 @@ class MainActivity : Activity() {
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             tab.pageUrl = url
             tab.media.clear()
+            tab.videoTime = 0.0
             if (tab === current && !showingHome) {
                 if (!urlEdit.hasFocus()) urlEdit.setText(url ?: "")
                 progress.visibility = View.VISIBLE
@@ -1470,37 +1474,82 @@ class MainActivity : Activity() {
 
     /** Telefonda açık olan sayfayı tek dokunuşla TV'deki JetBrowser'da açar. */
     /** Sayfanın (ve içindeki oynatıcıların) yüklediği video akışlarını not eder. */
-    private fun noteMedia(tab: JetWebView, r: WebResourceRequest) {
-        val path = (r.url.path ?: "").lowercase()
-        val type = when {
+    private val sniffJs by lazy { try { assets.open("sniff.js").bufferedReader().readText() } catch (_: Exception) { "" } }
+
+    /** Tüm çerçevelere (oynatıcı iframe'leri dahil) video dinleyicisi ekler. */
+    private fun installSniffer(w: JetWebView) {
+        try {
+            if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) ||
+                !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) || sniffJs.isEmpty()) return
+            WebViewCompat.addWebMessageListener(w, "jet", setOf("*")) { _, msg, _, _, _ ->
+                try {
+                    val o = JSONObject(msg.data ?: return@addWebMessageListener)
+                    if (o.has("t")) { w.videoTime = o.getDouble("t"); return@addWebMessageListener }
+                    val u = o.optString("u")
+                    if (!u.startsWith("http")) return@addWebMessageListener
+                    val k = o.optString("k")
+                    val type = when (k) {
+                        "master", "m3u8" -> "m3u8"
+                        "mpd" -> "mpd"
+                        else -> extType(Uri.parse(u)) ?: "mp4"
+                    }
+                    addMedia(w, u, type, o.optString("r").ifEmpty { null }, null, k == "master")
+                } catch (_: Exception) { }
+            }
+            WebViewCompat.addDocumentStartJavaScript(w, sniffJs, setOf("*"))
+        } catch (_: Exception) { }
+    }
+
+    private fun extType(u: Uri): String? {
+        val path = (u.path ?: "").lowercase()
+        return when {
             path.endsWith(".m3u8") -> "m3u8"
             path.endsWith(".mpd") -> "mpd"
             path.endsWith(".mp4") || path.endsWith(".m4v") -> "mp4"
             path.endsWith(".webm") -> "webm"
             path.endsWith(".mkv") -> "mkv"
-            else -> return
+            else -> null
         }
-        val url = r.url.toString()
-        if (tab.media.any { it.url == url }) return
+    }
+
+    private fun addMedia(tab: JetWebView, url: String, type: String, referer: String?, origin: String?, master: Boolean) {
+        synchronized(tab.media) {
+            val old = tab.media.indexOfFirst { it.url == url }
+            if (old >= 0) {
+                if (master && !tab.media[old].master) tab.media[old] = tab.media[old].copy(master = true)
+                return
+            }
+        }
+        if (AdBlock.isAd(Uri.parse(url))) return
         val h = LinkedHashMap<String, String>()
-        r.requestHeaders?.forEach { (k, v) ->
-            if (k.equals("Referer", true) || k.equals("Origin", true)) h[k.replaceFirstChar { it.uppercase() }] = v
-        }
-        if (!h.containsKey("Referer")) tab.pageUrl?.let { h["Referer"] = it }
+        (referer ?: tab.pageUrl)?.let { h["Referer"] = it }
+        val ref = h["Referer"]
+        val o = origin ?: ref?.let { Uri.parse(it) }?.let { if (it.scheme != null && it.host != null) it.scheme + "://" + it.host else null }
+        if (o != null) h["Origin"] = o
         h["User-Agent"] = ua()
         try { CookieManager.getInstance().getCookie(url)?.let { h["Cookie"] = it } } catch (_: Exception) { }
-        tab.media.add(Media(url, type, h))
-        while (tab.media.size > 12) tab.media.removeAt(0)
+        tab.media.add(Media(url, type, h, master))
+        synchronized(tab.media) { while (tab.media.size > 12) tab.media.removeAt(0) }
+    }
+
+    private fun noteMedia(tab: JetWebView, r: WebResourceRequest) {
+        val type = extType(r.url) ?: return
+        val hs = r.requestHeaders.orEmpty()
+        val ref = hs.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        val ori = hs.entries.firstOrNull { it.key.equals("Origin", true) }?.value
+        addMedia(tab, r.url.toString(), type, ref, ori, false)
     }
 
     private fun sendToTv() {
         val url = current?.url
         if (url == null) { toast("Önce bir sayfa açın"); return }
         // aynı akışın alt listeleri (kalite seçenekleri) yerine ana listeyi öne al
-        val found = current?.media?.toList().orEmpty().reversed()
-            .sortedByDescending { if (Regex("master|playlist|index", RegexOption.IGNORE_CASE).containsMatchIn(it.url)) 1 else 0 }
+        val found = synchronized(current!!.media) { current!!.media.toList() }.reversed()
+            .sortedByDescending {
+                (if (it.master) 2 else 0) + (if (Regex("master|playlist|index", RegexOption.IGNORE_CASE).containsMatchIn(it.url)) 1 else 0)
+            }
         if (found.isEmpty()) {
-            sendLine("U " + URLEncoder.encode(url, "UTF-8"), "TV'de açıldı ✓")
+            sendLine("U " + URLEncoder.encode(url, "UTF-8"), "Sayfa TV'de açıldı (video bulunamadı, önce videoyu oynatın)")
             return
         }
         val labels = found.map { m ->
@@ -1510,7 +1559,8 @@ class MainActivity : Activity() {
             if (i < found.size) {
                 val m = found[i]
                 val hj = JSONObject(m.headers as Map<*, *>).toString()
-                sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8"),
+                val pos = current?.videoTime?.toLong() ?: 0L
+                sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos,
                     "Video TV'de açılıyor ✓")
                 current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
             } else sendLine("U " + URLEncoder.encode(url, "UTF-8"), "TV'de açıldı ✓")

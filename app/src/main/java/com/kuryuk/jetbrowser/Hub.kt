@@ -190,7 +190,8 @@ object Hub {
         startFromAnywhere(Intent(a, PlayerActivity::class.java)
             .putExtra("url", url)
             .putExtra("type", p.getOrNull(1) ?: "")
-            .putExtra("headers", URLDecoder.decode(p.getOrNull(2) ?: "", "UTF-8")))
+            .putExtra("headers", URLDecoder.decode(p.getOrNull(2) ?: "", "UTF-8"))
+            .putExtra("pos", (p.getOrNull(3)?.toLongOrNull() ?: 0L) * 1000))
     }
 
     private fun startFromAnywhere(i: Intent): Boolean {

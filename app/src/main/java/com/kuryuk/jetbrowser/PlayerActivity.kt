@@ -77,6 +77,8 @@ class PlayerActivity : Activity() {
                 Hub.server?.send("N TV videoyu oynatamadı. Listeden başka bir video seçin ya da sayfayı açın")
             }
         })
+        val pos = i.getLongExtra("pos", 0L)
+        if (pos > 5000) p.seekTo(pos - 3000)
         p.prepare()
         p.playWhenReady = true
     }

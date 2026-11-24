@@ -8,7 +8,7 @@ import android.webkit.WebView
 import java.util.Collections
 
 /** Sayfada yakalanan video akışı (TV'de oynatmak için). */
-data class Media(val url: String, val type: String, val headers: Map<String, String>)
+data class Media(val url: String, val type: String, val headers: Map<String, String>, val master: Boolean = false)
 
 /** Telefon kumandası bağlıyken TV'nin ekran klavyesini açmayan WebView. */
 @SuppressLint("ViewConstructor")
@@ -16,6 +16,8 @@ class JetWebView(ctx: Context, val incognito: Boolean) : WebView(ctx) {
     var noIme = false
     var pending: String? = null
     @Volatile var pageUrl: String? = null
+    /** Sayfadaki videonun son oynatma konumu (sn). */
+    @Volatile var videoTime = 0.0
     /** Bu sayfada görülen video akışları, en eskisi başta. */
     val media: MutableList<Media> = Collections.synchronizedList(mutableListOf())
 

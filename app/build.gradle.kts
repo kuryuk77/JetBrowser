@@ -54,3 +54,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:$media3")
     implementation("androidx.media3:media3-ui:$media3")
 }
+
+dependencies {
+    implementation("androidx.webkit:webkit:1.11.0")
+}
