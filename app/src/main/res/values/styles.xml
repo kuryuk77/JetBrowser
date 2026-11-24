@@ -1,10 +1,10 @@
 <resources>
-    <color name="bg">#FF2C2E33</color>
-    <color name="bar">#FF2C2E33</color>
+    <color name="bg">#FF1A1B1E</color>
+    <color name="bar">#FF1A1B1E</color>
     <color name="tile">#26FFFFFF</color>
-    <color name="accent">#FFFFC83D</color>
+    <color name="accent">#FFEBC04F</color>
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:windowBackground">@drawable/app_bg</item>
         <item name="android:colorAccent">@color/accent</item>
         <item name="android:colorPrimary">@color/bar</item>
         <item name="android:colorPrimaryDark">@color/bg</item>

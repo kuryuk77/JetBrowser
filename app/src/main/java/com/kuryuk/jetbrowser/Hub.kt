@@ -44,7 +44,7 @@ object Hub {
             if (n > clientCount || n > 0) {
                 @Suppress("DEPRECATION")
                 val build = try { a.packageManager.getPackageInfo(a.packageName, 0).versionCode } catch (_: Exception) { 0 }
-                server?.send("V $build " + if (hasAccessBuild(a)) "full" else "lite")
+                server?.send("V $build " + (if (hasAccessBuild(a)) "full" else "lite") + " " + (WakeOnLan.ownMac() ?: "-"))
             }
             clientCount = n; clientName = name
             onClients?.invoke(n, name)
@@ -191,6 +191,7 @@ object Hub {
     /** "VID <url> <tür> <başlıklar>" — videoyu TV oynatıcısında açar. */
     private fun playVideo(arg: String) {
         val a = app ?: return
+        wakeScreen()
         val p = arg.split(' ')
         val url = URLDecoder.decode(p.getOrNull(0) ?: return, "UTF-8")
         val i = Intent(a, PlayerActivity::class.java)
@@ -265,21 +266,52 @@ object Hub {
     } catch (_: Exception) { null }
 
     /** TV kendi sürümünün (normal ya da tam) en yenisini indirir ve kurulum ekranını açar. */
+    @Volatile private var updating = false
+
+    private fun toastTv(msg: String) {
+        val a = app ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(a, msg, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun selfUpdate() {
         val a = app ?: return
+        if (updating) { server?.send("N Güncelleme zaten indiriliyor…"); return }
+        updating = true
+        wakeScreen()
         server?.send("N TV en son sürümü indiriyor…")
+        toastTv("JetBrowser güncellemesi indiriliyor…")
         Thread {
-            val f = downloadLatest(a)
-            val done = f
+            val done = downloadLatest(a) ?: run { Thread.sleep(1500); downloadLatest(a) }
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                if (done == null) server?.send("N TV güncellemeyi indiremedi")
-                else {
-                    server?.send("N İndirildi. TV'de \"Yükle\"ye basın")
+                updating = false
+                if (done == null) { server?.send("N TV güncellemeyi indiremedi"); toastTv("Güncelleme indirilemedi"); return@post }
+                server?.send("N İndirildi. TV'de \"Yükle\"ye basın")
+                // kurulum ekranını doğrudan aç; izin yoksa JetBrowser'a bırak (o izni sorar)
+                val canInstall = Build.VERSION.SDK_INT < 26 || a.packageManager.canRequestPackageInstalls()
+                @Suppress("DEPRECATION")
+                val direct = canInstall && startFromAnywhere(Intent(Intent.ACTION_INSTALL_PACKAGE)
+                    .setDataAndType(FileShare.uri(a, done), FileShare.mime(done.name))
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                if (!direct) {
                     val l = onFile
                     if (l != null && foreground) l(1, done.name, done) else { pendingFile = done; launch() }
                 }
             }
         }.start()
+    }
+
+    /** Ekran kapalıysa (bekleme) açar. */
+    fun wakeScreen() {
+        val a = app ?: return
+        val pm = a.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (pm.isInteractive) return
+        try {
+            @Suppress("DEPRECATION")
+            pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or
+                PowerManager.ON_AFTER_RELEASE, "jet:wake").acquire(5000)
+        } catch (_: Exception) { }
     }
 
     /** Ekran kapalıysa uyandırır, açıksa uyutur. */
@@ -289,11 +321,10 @@ object Hub {
         if (pm.isInteractive) {
             val acc = JetAccess.instance
             if (acc == null) server?.send("N TV'yi kapatma bu kurulumda yok (açma çalışır)") else if (!acc.sleep()) server?.send("N Bu TV uzaktan kapatmayı desteklemiyor")
-        } else try {
-            @Suppress("DEPRECATION")
-            pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or
-                PowerManager.ON_AFTER_RELEASE, "jet:wake").acquire(3000)
-        } catch (_: Exception) { }
+        } else {
+            wakeScreen()
+            launch()   // ekranı açan bir pencere de göster (bazı TV'ler yalnızca böyle uyanır)
+        }
     }
 
     fun stop() {

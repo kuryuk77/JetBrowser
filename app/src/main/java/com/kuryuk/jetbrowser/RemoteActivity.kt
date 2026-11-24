@@ -152,15 +152,23 @@ class RemoteActivity : Activity() {
     private fun buildUi(): View {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF2C2E33.toInt())
-            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setBackgroundResource(R.drawable.app_bg)
+            setPadding(dp(12), dp(12), dp(12), dp(10))
         }
 
-        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val top = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+            background = GradientDrawable().apply { setColor(0x1FFFFFFF); setStroke(dp(1), 0x2EFFFFFF); cornerRadius = dp(100).toFloat() }
+        }
+        top.addView(android.widget.ImageView(this).apply { setImageResource(R.drawable.ic_jet) },
+            LinearLayout.LayoutParams(dp(30), dp(30)).apply { rightMargin = dp(10) })
         status = TextView(this).apply {
             text = "TV aranıyor…"
             setTextColor(Color.WHITE)
             textSize = 15f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
         }
         top.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
         root.addView(top, LinearLayout.LayoutParams(-1, -2))
@@ -173,9 +181,11 @@ class RemoteActivity : Activity() {
 
         fun tv(label: String, cmd: String) = btn(label) {
             if (connected) send(cmd) else toast("TV'ye bağlı değil")
-        }.apply { setTextColor(0xFFFFC83D.toInt()) }
+        }
         val rowTv = LinearLayout(this)
-        rowTv.addView(tv("⏻ Güç", "PWR"))
+        rowTv.addView(btn("⏻ Güç") { power() }.apply {
+            setBackgroundResource(R.drawable.tile_primary); setTextColor(0xFF1B1C1F.toInt()); typeface = Typeface.DEFAULT_BOLD
+        })
         rowTv.addView(tv("TV ana ekran", "GH"))
         rowTv.addView(tv("Giriş", "IN?"))
         root.addView(rowTv, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(6) })
@@ -196,7 +206,9 @@ class RemoteActivity : Activity() {
         pad5.addView(round("▼", "K DOWN", true), android.widget.FrameLayout.LayoutParams(b, b, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
         pad5.addView(round("◀", "K LEFT", true), android.widget.FrameLayout.LayoutParams(b, b, Gravity.START or Gravity.CENTER_VERTICAL))
         pad5.addView(round("▶", "K RIGHT", true), android.widget.FrameLayout.LayoutParams(b, b, Gravity.END or Gravity.CENTER_VERTICAL))
-        pad5.addView(round("OK", "K CENTER", false).apply { setTextColor(0xFFFFC83D.toInt()); textSize = 16f },
+        pad5.addView(round("OK", "K CENTER", false).apply {
+            setBackgroundResource(R.drawable.round_primary); setTextColor(0xFF1B1C1F.toInt()); textSize = 16f; typeface = Typeface.DEFAULT_BOLD
+        },
             android.widget.FrameLayout.LayoutParams(b, b, Gravity.CENTER))
         bottom.addView(pad5, LinearLayout.LayoutParams(dp(166), dp(166)))
         val side = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -219,8 +231,8 @@ class RemoteActivity : Activity() {
             setSingleLine()
             imeOptions = EditorInfo.IME_ACTION_SEND or EditorInfo.IME_FLAG_NO_EXTRACT_UI
             inputType = InputType.TYPE_CLASS_TEXT
-            background = GradientDrawable().apply { setColor(0x26FFFFFF); setStroke(dp(1), 0x2EFFFFFF); cornerRadius = dp(22).toFloat() }
-            setPadding(dp(16), dp(10), dp(16), dp(10))
+            background = GradientDrawable().apply { setColor(0x1FFFFFFF); setStroke(dp(1), 0x2EFFFFFF); cornerRadius = dp(100).toFloat() }
+            setPadding(dp(20), dp(12), dp(20), dp(12))
             setOnEditorActionListener { _, id, ev ->
                 val enter = ev != null && ev.keyCode == KeyEvent.KEYCODE_ENTER && ev.action == KeyEvent.ACTION_DOWN
                 if (id == EditorInfo.IME_ACTION_SEND || id == EditorInfo.IME_ACTION_DONE || enter) {
@@ -244,7 +256,9 @@ class RemoteActivity : Activity() {
         }
         row3.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
         row3.addView(btn("⌫", 0) { send("B 1"); removeLastLocal() })
-        row3.addView(btn("↵", 0) { send("K ENTER"); clearInput() })
+        row3.addView(btn("↵", 0) { send("K ENTER"); clearInput() }.apply {
+            setBackgroundResource(R.drawable.tile_primary); setTextColor(0xFF1B1C1F.toInt())
+        })
         root.addView(row3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         return root
     }
@@ -328,16 +342,50 @@ class RemoteActivity : Activity() {
         }, 200)
     }
 
+    /** Güç: TV bağlıysa aç/kapat; bağlı değilse (bekleme modu) ağ üzerinden uyandırmayı dene. */
+    private fun power() {
+        if (connected) { send("PWR"); return }
+        val mac = prefs.getString("mac", null)
+        if (!WakeOnLan.valid(mac)) { macDialog(); return }
+        toast("TV uyandırılıyor…")
+        val ip = prefs.getString("host", null)
+        Thread { WakeOnLan.send(mac!!, ip) }.start()
+        main.postDelayed({ if (!connected) prefs.getString("host", null)?.let { connect(it, prefs.getInt("port", REMOTE_PORT), connName) } }, 6000)
+        main.postDelayed({
+            if (!connected) toast("TV uyanmadı. TV ayarlarında \"Wi-Fi ile aç / Ağ bekleme\" açık mı?")
+        }, 25000)
+    }
+
+    private fun macDialog() {
+        val e = EditText(this).apply {
+            hint = "örn. A1:B2:C3:D4:E5:F6"
+            setSingleLine()
+            setText(prefs.getString("mac", ""))
+        }
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("TV'yi uyandırmak için MAC adresi")
+            .setMessage("TV kapalıyken telefonun onu açabilmesi için TV'nin MAC adresi gerekiyor.\n\n" +
+                "TV'de: Ayarlar > Ağ ve İnternet > bağlı olduğunuz Wi-Fi > MAC adresi (bazı TV'lerde Ayarlar > Cihaz Tercihleri > Hakkında > Durum).\n\n" +
+                "Ayrıca TV ayarlarında \"Wi-Fi ile aç\" / \"Ağ bekleme\" / \"Wake on LAN\" seçeneği varsa açın.")
+            .setView(e)
+            .setPositiveButton("Kaydet") { _, _ ->
+                val m = e.text.toString()
+                if (WakeOnLan.valid(m)) { prefs.edit().putString("mac", WakeOnLan.normalize(m)).apply(); toast("Kaydedildi") }
+                else toast("Geçersiz MAC adresi")
+            }
+            .setNegativeButton("Vazgeç", null).show()
+    }
+
     private fun chooseDevice() {
         val names = found.keys.toList()
-        val items = names.map { it.removePrefix("JetBrowser ") } + "IP adresi ile bağlan"
+        val items = names.map { it.removePrefix("JetBrowser ") } + "IP adresi ile bağlan" + "TV MAC adresi (uyandırma)"
         AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
             .setTitle(if (names.isEmpty()) "TV bulunamadı" else "TV seçin")
             .setItems(items.toTypedArray()) { _, i ->
                 if (i < names.size) {
                     val (h, p) = found[names[i]]!!
                     connect(h, p, names[i])
-                } else ipDialog()
+                } else if (i == names.size) ipDialog() else macDialog()
             }.show()
     }
 
@@ -433,6 +481,7 @@ class RemoteActivity : Activity() {
                 else if (line.startsWith("V ")) {
                     val p = line.split(' ')
                     tvVariant = p.getOrNull(2)
+                    p.getOrNull(3)?.takeIf { WakeOnLan.valid(it) }?.let { prefs.edit().putString("mac", WakeOnLan.normalize(it)).apply() }
                     main.post { if (connected) setStatus("● Bağlı: " + connName.removePrefix("JetBrowser ") + "  (1.0." + p.getOrNull(1) + ")") }
                 }
                 else if (line.startsWith("N ")) main.post { Toast.makeText(this, line.substring(2), Toast.LENGTH_LONG).show() }
@@ -713,12 +762,12 @@ class TouchpadView(ctx: Context, private val out: (String) -> Unit) : View(ctx) 
         color = 0xFFB5B8BE.toInt(); textSize = 14 * d; textAlign = Paint.Align.CENTER
     }
     private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFFFC83D.toInt(); textSize = 20 * d; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD
+        color = 0xFFEBC04F.toInt(); textSize = 20 * d; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD
     }
 
     init {
         background = GradientDrawable().apply {
-            setColor(0x1AFFFFFF); cornerRadius = 24 * d; setStroke((1 * d).toInt(), 0x2EFFFFFF)
+            setColor(0x14FFFFFF); cornerRadius = 30 * d; setStroke((1 * d).toInt(), 0x2EFFFFFF)
         }
     }
 

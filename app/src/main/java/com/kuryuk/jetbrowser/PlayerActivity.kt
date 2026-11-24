@@ -42,6 +42,10 @@ class PlayerActivity : Activity() {
         super.onCreate(savedInstanceState)
         instance = this
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // bekleme modundan gönderilen video için ekranı aç
+        if (android.os.Build.VERSION.SDK_INT >= 27) { setTurnScreenOn(true); setShowWhenLocked(true) }
+        else @Suppress("DEPRECATION") window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -235,12 +239,20 @@ class PlayerActivity : Activity() {
             "K LEFT" -> { p.seekTo((p.currentPosition - 10_000).coerceAtLeast(0)); view.showController() }
             "K RIGHT" -> { p.seekTo(p.currentPosition + 10_000); view.showController() }
             "K UP", "K DOWN", "K MENU" -> view.showController()
-            "K BACK" -> finish()
+            "K BACK" -> backPressed()
             else -> return line.startsWith("M ") || line == "SD" || line == "SE" || line.startsWith("S ") ||
                 line == "LD" || line == "LU"
         }
         return true
     }
+
+    /** Geri: kontroller açıksa önce onları gizle, değilse oynatıcıyı kapat. */
+    private fun backPressed() {
+        if (view.isControllerFullyVisible) view.hideController() else finish()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() = backPressed()
 
     override fun onResume() {
         super.onResume()

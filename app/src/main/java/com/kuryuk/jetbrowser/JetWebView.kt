@@ -22,6 +22,8 @@ class JetWebView(ctx: Context, val incognito: Boolean) : WebView(ctx) {
     var noIme = false
     var pending: String? = null
     @Volatile var pageUrl: String? = null
+    /** Menüdeki yakınlaştırma yüzdesi */
+    var zoomPct = 100
     /** Sayfadaki videonun son oynatma konumu (sn). */
     @Volatile var videoTime = 0.0
     /** Bu sayfada görülen video akışları, en eskisi başta. */

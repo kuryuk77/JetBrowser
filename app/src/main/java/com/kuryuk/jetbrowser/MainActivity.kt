@@ -320,9 +320,13 @@ class MainActivity : Activity() {
     private lateinit var btnTv: ImageButton
     private lateinit var btnMic: View
     private val panels = mutableListOf<View>()
+    private lateinit var recentBox: LinearLayout
+    private lateinit var suggestBox: LinearLayout
+    private var suggestSeq = 0
+    private val suggestRun = Runnable { fetchSuggest() }
 
     /** Cam görünümlü arka plan: yarı saydam dolgu, ince çizgi; odakta sarı çerçeve. */
-    private fun glassBg(oval: Boolean, radiusDp: Int = 16): Drawable {
+    private fun glassBg(oval: Boolean, radiusDp: Int = 100): Drawable {
         fun shape(fill: Int, stroke: Int, sw: Int) = GradientDrawable().apply {
             if (oval) shape = GradientDrawable.OVAL else cornerRadius = dp(radiusDp).toFloat()
             setColor(fill)
@@ -330,10 +334,66 @@ class MainActivity : Activity() {
         }
         return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), shape(SURFACE_FOCUS, ACCENT, 2))
-            addState(intArrayOf(android.R.attr.state_pressed), shape(SURFACE_FOCUS, 0x55FFFFFF, 1))
-            addState(intArrayOf(), shape(SURFACE, 0x2EFFFFFF, 1))
+            addState(intArrayOf(android.R.attr.state_pressed), shape(SURFACE_FOCUS, 0x66EBC04F, 1))
+            addState(intArrayOf(), shape(SURFACE, LINE, 1))
         }
     }
+
+    /** Sarı, parlayan ana düğme / seçili satır arka planı. */
+    private fun primaryBg(oval: Boolean = false): Drawable {
+        fun glow(alpha: Int): Drawable {
+            val halo = GradientDrawable().apply {
+                if (oval) shape = GradientDrawable.OVAL else cornerRadius = dp(100).toFloat()
+                setColor((alpha shl 24) or 0xEBC04F)
+            }
+            val core = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0xFFF2CD62.toInt(), 0xFFE2B43F.toInt())).apply {
+                if (oval) shape = GradientDrawable.OVAL else cornerRadius = dp(100).toFloat()
+            }
+            return android.graphics.drawable.LayerDrawable(arrayOf(halo, core)).apply { setLayerInset(1, dp(3), dp(3), dp(3), dp(3)) }
+        }
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), glow(0x80))
+            addState(intArrayOf(android.R.attr.state_pressed), glow(0x66))
+            addState(intArrayOf(), glow(0x33))
+        }
+    }
+
+    /** JetHSE tarzı hap şeklinde satır: solda ince ikon, yanında yazı. */
+    private fun pillRow(icon: Int?, text: CharSequence, primary: Boolean = false, sub: String? = null,
+                        onClick: () -> Unit): LinearLayout {
+        val fg = if (primary) ON_ACCENT else Color.WHITE
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = if (primary) primaryBg() else glassBg(false)
+            setPadding(dp(20), dp(13), dp(18), dp(13))
+            isFocusable = true
+            isClickable = true
+            setOnClickListener { onClick() }
+            if (icon != null) addView(ImageView(this@MainActivity).apply {
+                setImageResource(icon)
+                setColorFilter(if (primary) ON_ACCENT else 0xFFD6D7DA.toInt())
+            }, LinearLayout.LayoutParams(dp(22), dp(22)).apply { rightMargin = dp(14) })
+            val texts = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+            texts.addView(TextView(this@MainActivity).apply {
+                this.text = text
+                textSize = 16f
+                setTextColor(fg)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            if (sub != null) texts.addView(TextView(this@MainActivity).apply {
+                this.text = sub
+                textSize = 12.5f
+                setTextColor(if (primary) 0xCC1B1C1F.toInt() else TEXT_DIM)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+    }
+
+    private fun rowParams() = LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(2), dp(5), dp(2), dp(5)) }
 
     private fun screenW() = resources.displayMetrics.widthPixels
 
@@ -374,6 +434,23 @@ class MainActivity : Activity() {
                 val enter = ev != null && ev.keyCode == KeyEvent.KEYCODE_ENTER && ev.action == KeyEvent.ACTION_DOWN
                 if (id == EditorInfo.IME_ACTION_GO || enter) { go(text.toString()); true } else false
             }
+        }
+        urlEdit.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (!urlEdit.hasFocus()) return
+                handler.removeCallbacks(suggestRun)
+                handler.postDelayed(suggestRun, 180)
+            }
+        })
+        urlEdit.setOnFocusChangeListener { _, f ->
+            if (!f) handler.postDelayed({
+                var v: View? = currentFocus
+                var inside = false
+                while (v != null) { if (v === suggestBox) { inside = true; break }; v = v.parent as? View }
+                if (!inside) hideSuggest()
+            }, 120)
         }
         urlBox.addView(urlEdit, LinearLayout.LayoutParams(0, dp(46), 1f))
         val mic = ImageButton(this).apply {
@@ -433,7 +510,15 @@ class MainActivity : Activity() {
         }
         cursor = CursorView(this).apply { visibility = View.GONE }
 
+        suggestBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = GradientDrawable().apply { setColor(GLASS_STRONG); cornerRadius = dp(26).toFloat(); setStroke(dp(1), LINE) }
+            elevation = dp(8).toFloat()
+        }
         root.addView(column, FrameLayout.LayoutParams(-1, -1))
+        root.addView(suggestBox, FrameLayout.LayoutParams(-2, -2))
         root.addView(fullHolder, FrameLayout.LayoutParams(-1, -1))
         root.addView(cursor, FrameLayout.LayoutParams(-1, -1))
         root.viewTreeObserver.addOnGlobalFocusChangeListener { _, _ -> updateCursorVisibility() }
@@ -465,6 +550,7 @@ class MainActivity : Activity() {
         btnTv.visibility = if (!home && !isTv) View.VISIBLE else View.GONE
         btnMic.visibility = if (!home && !wide) View.GONE else View.VISIBLE
         homeHolder.layoutParams = homeHolder.layoutParams.apply { width = min(screenW() - dp(16), dp(680)) }
+        recentBox.layoutParams = recentBox.layoutParams.apply { width = min(screenW() - dp(16), dp(680)) }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -501,6 +587,9 @@ class MainActivity : Activity() {
 
         actionGrid = GridLayout(this)
         col.addView(actionGrid, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(16) })
+
+        recentBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(recentBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
         homeView.addView(col)
     }
 
@@ -541,6 +630,69 @@ class MainActivity : Activity() {
             Triple(R.drawable.ic_settings, "Ayarlar") { settingsDialog() }
         )
         items.forEach { (ic, label, action) -> actionGrid.addView(actionTile(cell, ic, label, action)) }
+
+        // son gezilenler (Chrome'daki gibi): geçmişe girmeden tek dokunuşla aç
+        recentBox.removeAllViews()
+        val recent = store.history.distinctBy { Uri.parse(it.url).let { u -> (u.host ?: "") + u.path } }.take(6)
+        if (recent.isNotEmpty()) {
+            recentBox.addView(TextView(this).apply {
+                text = "SON GEZİLENLER"
+                textSize = 13f
+                letterSpacing = 0.12f
+                setTextColor(TEXT_DIM)
+                setPadding(dp(16), dp(4), dp(16), dp(6))
+            })
+            recent.forEach { h ->
+                recentBox.addView(pillRow(R.drawable.ic_history, h.title.ifBlank { h.url },
+                    sub = Uri.parse(h.url).host?.removePrefix("www.")) { go(h.url) }, rowParams())
+            }
+            recentBox.addView(pillRow(R.drawable.ic_history, "Tüm geçmiş") { historyDialog() }, rowParams())
+        }
+    }
+
+    // ------------------------------------------------------------------ arama önerileri
+
+    private fun hideSuggest() {
+        suggestSeq++
+        handler.removeCallbacks(suggestRun)
+        if (::suggestBox.isInitialized) suggestBox.visibility = View.GONE
+    }
+
+    private fun fetchSuggest() {
+        val q = urlEdit.text.toString().trim()
+        if (q.isEmpty() || !urlEdit.hasFocus() || q == current?.url) { hideSuggest(); return }
+        val seq = ++suggestSeq
+        val hist = store.history.filter { it.title.contains(q, true) || it.url.contains(q, true) }
+            .distinctBy { it.url }.take(3)
+        val incognito = current?.incognito == true
+        Thread {
+            val list = if (incognito) emptyList() else try {
+                val c = java.net.URL("https://suggestqueries.google.com/complete/search?client=firefox&hl=tr&ie=utf-8&oe=utf-8&q=" +
+                    URLEncoder.encode(q, "UTF-8")).openConnection() as java.net.HttpURLConnection
+                c.connectTimeout = 3000; c.readTimeout = 3000
+                val a = JSONArray(c.inputStream.bufferedReader(Charsets.UTF_8).readText()).getJSONArray(1)
+                (0 until a.length()).map { a.getString(it) }.filter { it != q }.take(6)
+            } catch (_: Exception) { emptyList() }
+            runOnUiThread { if (seq == suggestSeq && urlEdit.hasFocus()) showSuggest(hist, list) }
+        }.start()
+    }
+
+    private fun showSuggest(hist: List<Site>, list: List<String>) {
+        suggestBox.removeAllViews()
+        if (hist.isEmpty() && list.isEmpty()) { suggestBox.visibility = View.GONE; return }
+        fun add(v: View) = suggestBox.addView(v, LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, dp(3), 0, dp(3)) })
+        hist.forEach { h -> add(pillRow(R.drawable.ic_history, h.title.ifBlank { h.url }, sub = Uri.parse(h.url).host) { hideSuggest(); go(h.url) }) }
+        list.forEach { q -> add(pillRow(R.drawable.ic_search, q) { hideSuggest(); go(q) }) }
+        val b = IntArray(2); val r = IntArray(2)
+        bar.getLocationInWindow(b); root.getLocationInWindow(r)
+        suggestBox.layoutParams = (suggestBox.layoutParams as FrameLayout.LayoutParams).apply {
+            width = bar.width - dp(16)
+            leftMargin = b[0] - r[0] + dp(8)
+            topMargin = b[1] - r[1] + bar.height
+        }
+        suggestBox.visibility = View.VISIBLE
+        suggestBox.bringToFront()
+        cursor.bringToFront()
     }
 
     private fun tile(cell: Int, box: View, boxSize: Int, title: String, onClick: () -> Unit): LinearLayout {
@@ -681,6 +833,7 @@ class MainActivity : Activity() {
     }
 
     private fun go(input: String) {
+        hideSuggest()
         val s = input.trim()
         if (s.isEmpty()) return
         val url = toUrl(s)
@@ -700,6 +853,7 @@ class MainActivity : Activity() {
     }
 
     private fun handleBack(): Boolean {
+        if (::suggestBox.isInitialized && suggestBox.visibility == View.VISIBLE) { hideSuggest(); return true }
         if (panels.isNotEmpty()) { closePanel(panels.last()); return true }
         if (customView != null) { exitFullscreen(); return true }
         if (urlEdit.hasFocus()) {
@@ -741,6 +895,7 @@ class MainActivity : Activity() {
 
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             tab.pageUrl = url
+            tab.zoomPct = 100
             tab.media.clear()
             tab.videoTime = 0.0
             tab.subs.clear()
@@ -1141,17 +1296,17 @@ class MainActivity : Activity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             isClickable = true
-            setPadding(dp(14), dp(16), dp(14), dp(12))
+            setPadding(dp(16), dp(20), dp(16), dp(14))
             background = GradientDrawable().apply {
-                setColor(GLASS_STRONG); cornerRadius = dp(26).toFloat(); setStroke(dp(1), 0x33FFFFFF)
+                setColor(GLASS_STRONG); cornerRadius = dp(30).toFloat(); setStroke(dp(1), LINE)
             }
         }
         card.addView(TextView(this).apply {
             text = title
-            textSize = 20f
+            textSize = 22f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
-            setPadding(dp(8), 0, dp(8), dp(10))
+            setPadding(dp(10), 0, dp(8), dp(12))
         })
         val inner = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         if (message != null) inner.addView(TextView(this).apply {
@@ -1166,16 +1321,17 @@ class MainActivity : Activity() {
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         if (buttons.isNotEmpty()) {
             val row = LinearLayout(this).apply { gravity = Gravity.END; setPadding(0, dp(10), 0, 0) }
-            buttons.forEach { (t, action) ->
+            buttons.forEachIndexed { bi, (t, action) ->
+                val main = bi == buttons.size - 1
                 row.addView(TextView(this).apply {
                     text = t
                     textSize = 15f
                     typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(ACCENT)
+                    setTextColor(if (main) ON_ACCENT else Color.WHITE)
                     gravity = Gravity.CENTER
                     maxLines = 1
-                    setPadding(dp(18), dp(11), dp(18), dp(11))
-                    background = glassBg(false, 24)
+                    setPadding(dp(20), dp(12), dp(20), dp(12))
+                    background = if (main) primaryBg() else glassBg(false)
                     isFocusable = true
                     isClickable = true
                     setOnClickListener { closePanel(scrim); action() }
@@ -1219,25 +1375,18 @@ class MainActivity : Activity() {
     private fun listPanel(
         title: String, items: List<String>, onClick: (Int) -> Unit,
         onLong: ((Int) -> Unit)? = null,
-        buttons: List<Pair<String, () -> Unit>> = emptyList(), selected: Int = -1
+        buttons: List<Pair<String, () -> Unit>> = emptyList(), selected: Int = -1,
+        icons: List<Int?>? = null
     ): View {
         val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         var panel: View? = null
         items.forEachIndexed { i, s ->
-            val row = TextView(this).apply {
-                text = if (i == selected) "✓  $s" else s
-                textSize = 16f
-                setTextColor(if (i == selected) ACCENT else Color.WHITE)
-                maxLines = 3
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(dp(16), dp(14), dp(16), dp(14))
-                background = glassBg(false, 16)
-                isFocusable = true
-                isClickable = true
-                setOnClickListener { panel?.let { closePanel(it) }; onClick(i) }
-                if (onLong != null) setOnLongClickListener { panel?.let { closePanel(it) }; onLong(i); true }
+            val lines = s.split("\n", limit = 2)
+            val row = pillRow(icons?.getOrNull(i), lines[0], i == selected, lines.getOrNull(1)) {
+                panel?.let { closePanel(it) }; onClick(i)
             }
-            list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(2), dp(4), dp(2), dp(4)) })
+            if (onLong != null) row.setOnLongClickListener { panel?.let { closePanel(it) }; onLong(i); true }
+            list.addView(row, rowParams())
         }
         val p = openPanel(title, if (items.isEmpty()) "Henüz bir şey yok." else null, list, buttons)
         panel = p
@@ -1250,8 +1399,8 @@ class MainActivity : Activity() {
         setSingleLine()
         setTextColor(Color.WHITE)
         setHintTextColor(TEXT_DIM)
-        background = glassBg(false, 16)
-        setPadding(dp(16), dp(12), dp(16), dp(12))
+        background = glassBg(false, 24)
+        setPadding(dp(18), dp(13), dp(18), dp(13))
         if (uri) inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
         showSoftInputOnFocus = !remoteConnected
     }
@@ -1260,31 +1409,73 @@ class MainActivity : Activity() {
         if (panels.isNotEmpty()) { closeAllPanels(); return }
         val w = current
         val onPage = !showingHome && w != null
-        val items = mutableListOf<Pair<String, () -> Unit>>()
-        fun add(t: String, f: () -> Unit) { items.add(Pair(t, f)) }
-        if (!isTv) add("🎮 Kumanda") { startActivity(Intent(this, RemoteActivity::class.java)) }
-        add("Yeni sekme") { newTab(false); showHome(false) }
-        add("Yeni gizli sekme") { newTab(true); showHome(false) }
-        add("Sekmeler (${tabs.size})") { tabsDialog() }
-        if (onPage && w != null) {
-            if (!isTv) add("📺 Videoyu / sayfayı TV'de aç") { sendToTv() }
-            if (!isTv) add("🌐 Sadece sayfayı TV'de aç") { sendLine("U " + URLEncoder.encode(w.url ?: "", "UTF-8"), "TV'de açıldı ✓") }
-            add("Yenile") { w.reload() }
-            add("İleri") { if (w.canGoForward()) w.goForward() }
-            add("Yakınlaştır") { w.zoomIn() }
-            add("Uzaklaştır") { w.zoomOut() }
-            add("Yer imlerine ekle") { addBookmark() }
-            add("Hızlı erişime ekle") { editDialDialog(-1, w.title ?: "", w.url ?: "") }
-            add("Paylaş") { share(w.url) }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        var panel: View? = null
+        fun close() { panel?.let { closePanel(it) } }
+        fun row(icon: Int, t: String, primary: Boolean = false, f: () -> Unit) =
+            box.addView(pillRow(icon, t, primary) { close(); f() }, rowParams())
+        fun split(a: Pair<Int, String>, fa: () -> Unit, b: Pair<Int, String>, fb: () -> Unit, primary: Boolean = false) {
+            val r = LinearLayout(this)
+            r.addView(pillRow(a.first, a.second, primary) { close(); fa() }, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(5) })
+            r.addView(pillRow(b.first, b.second) { close(); fb() }, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(5) })
+            box.addView(r, rowParams())
         }
-        add("Masaüstü sitesi: " + onOff(store.desktopMode)) { toggleDesktop() }
-        add("Kumanda imleci: " + onOff(cursorMode)) { toggleCursor() }
-        add("Yer imleri") { bookmarksDialog() }
-        add("Geçmiş") { historyDialog() }
-        add("İndirilenler") { downloadsDialog() }
-        add("Ayarlar") { settingsDialog() }
-        add("Çıkış") { finishAndRemoveTask() }
-        listPanel("Menü", items.map { it.first }, { items[it].second() })
+        if (!isTv) row(R.drawable.ic_mouse, "Kumanda", primary = true) { startActivity(Intent(this, RemoteActivity::class.java)) }
+        if (onPage && w != null && !isTv) split(
+            Pair(R.drawable.ic_play, "Videoyu gönder"), { sendToTv(forceVideo = true) },
+            Pair(R.drawable.ic_globe, "Sayfayı gönder"), { sendLine("U " + URLEncoder.encode(w.url ?: "", "UTF-8"), "Sayfa TV'de açıldı ✓") })
+        if (onPage && w != null) {
+            split(Pair(R.drawable.ic_refresh, "Yenile"), { w.reload() }, Pair(R.drawable.ic_forward, "İleri"), { if (w.canGoForward()) w.goForward() })
+            box.addView(zoomRow(w), rowParams())
+        }
+        split(Pair(R.drawable.ic_tabs, "Sekmeler (${tabs.size})"), { tabsDialog() },
+            Pair(R.drawable.ic_incognito, "Gizli sekme"), { newTab(true); showHome(false) })
+        split(Pair(R.drawable.ic_star, "Yer imleri"), { bookmarksDialog() }, Pair(R.drawable.ic_history, "Geçmiş"), { historyDialog() })
+        if (onPage && w != null) split(Pair(R.drawable.ic_bookmark_add, "Hızlı erişime ekle"), { editDialDialog(-1, w.title ?: "", w.url ?: "") },
+            Pair(R.drawable.ic_share, "Paylaş"), { share(w.url) })
+        split(Pair(R.drawable.ic_download, "İndirilenler"), { downloadsDialog() }, Pair(R.drawable.ic_settings, "Ayarlar"), { settingsDialog() })
+        split(Pair(R.drawable.ic_desktop, "Masaüstü: " + onOff(store.desktopMode)), { toggleDesktop() },
+            Pair(R.drawable.ic_mouse, "İmleç: " + onOff(cursorMode)), { toggleCursor() })
+        row(R.drawable.ic_exit, "Çıkış") { finishAndRemoveTask() }
+        panel = openPanel("Menü", null, box, emptyList())
+    }
+
+    /** Chrome gibi:  −   %100   +  (panel açık kalır). */
+    private fun zoomRow(w: JetWebView): View {
+        val r = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            background = glassBg(false)
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+        }
+        val label = TextView(this).apply {
+            text = "Yakınlaştırma  %" + w.zoomPct
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }
+        fun btn(t: String, d: Int) = TextView(this).apply {
+            text = t
+            textSize = 22f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ON_ACCENT)
+            gravity = Gravity.CENTER
+            background = primaryBg(oval = true)
+            isFocusable = true
+            isClickable = true
+            setOnClickListener {
+                val old = w.zoomPct
+                val nw = (old + d).coerceIn(30, 300)
+                if (nw != old) {
+                    w.zoomBy(nw.toFloat() / old)
+                    w.zoomPct = nw
+                    label.text = "Yakınlaştırma  %$nw"
+                }
+            }
+        }
+        r.addView(btn("−", -10), LinearLayout.LayoutParams(dp(44), dp(44)))
+        r.addView(label, LinearLayout.LayoutParams(0, -2, 1f))
+        r.addView(btn("+", 10), LinearLayout.LayoutParams(dp(44), dp(44)))
+        return r
     }
 
     private fun onOff(b: Boolean) = if (b) "Açık" else "Kapalı"
@@ -1579,12 +1770,13 @@ class MainActivity : Activity() {
         addMedia(tab, r.url.toString(), type, ref, ori, false)
     }
 
-    private fun sendToTv() {
+    private fun sendToTv(forceVideo: Boolean = false) {
         val url = current?.url
         if (url == null) { toast("Önce bir sayfa açın"); return }
         val found = pickVideos(synchronized(current!!.media) { current!!.media.toList() })
         if (found.isEmpty()) {
-            sendLine("U " + URLEncoder.encode(url, "UTF-8"), "Sayfa TV'de açıldı (video bulunamadı, önce videoyu oynatın)")
+            if (forceVideo) toast("Bu sayfada video bulunamadı. Önce videoyu oynatın")
+            else sendLine("U " + URLEncoder.encode(url, "UTF-8"), "Sayfa TV'de açıldı (video bulunamadı, önce videoyu oynatın)")
             return
         }
         if (found.size == 1) { sendVideo(found[0]); return }
@@ -1655,10 +1847,25 @@ class MainActivity : Activity() {
         }
         val port = p.getInt("port", REMOTE_PORT)
         toast("TV'ye gönderiliyor…")
+        val mac = p.getString("mac", null)
         Thread {
+            // TV bekleme modundaysa: uyandır ve bağlanana kadar dene
+            fun open(): java.net.Socket? = try {
+                java.net.Socket().apply { connect(java.net.InetSocketAddress(host, port), 3000) }
+            } catch (_: Exception) { null }
+            var sock = open()
+            if (sock == null && WakeOnLan.valid(mac)) {
+                runOnUiThread { toast("TV kapalı görünüyor, uyandırılıyor…") }
+                val end = System.currentTimeMillis() + 35000
+                while (sock == null && System.currentTimeMillis() < end) {
+                    WakeOnLan.send(mac!!, host)
+                    Thread.sleep(2500)
+                    sock = open()
+                }
+                if (sock != null) Thread.sleep(2500)  // TV'nin kendine gelmesi için kısa bekleme
+            }
             val ok = try {
-                java.net.Socket().use { s ->
-                    s.connect(java.net.InetSocketAddress(host, port), 3000)
+                (sock ?: throw java.io.IOException()).use { s ->
                     val w = java.io.PrintWriter(java.io.OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8), true)
                     w.println(line)
                     w.flush()
@@ -1677,7 +1884,10 @@ class MainActivity : Activity() {
                 }
                 true
             } catch (_: Exception) { false }
-            if (!ok) runOnUiThread { toast("TV'ye ulaşılamadı. TV açık mı?") }
+            if (!ok) runOnUiThread {
+                toast(if (WakeOnLan.valid(mac)) "TV'ye ulaşılamadı. TV uyanmadı ya da ağ bekleme kapalı"
+                    else "TV'ye ulaşılamadı. TV açık mı? (Kapalı TV'yi açmak için Kumanda > Cihaz > TV MAC adresi)")
+            }
         }.start()
     }
 
@@ -1778,10 +1988,12 @@ class MainActivity : Activity() {
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 
     companion object {
-        const val ACCENT = 0xFFFFC83D.toInt()
-        const val SURFACE = 0x26FFFFFF
+        const val ACCENT = 0xFFEBC04F.toInt()
+        const val ON_ACCENT = 0xFF1B1C1F.toInt()
+        const val LINE = 0x2EFFFFFF
+        const val SURFACE = 0x1FFFFFFF
         const val SURFACE_FOCUS = 0x40FFFFFF
-        const val GLASS_STRONG = 0xEB1E1F23.toInt()
+        const val GLASS_STRONG = 0xF2232427.toInt()
         const val TEXT_DIM = 0xFFB5B8BE.toInt()
         const val DESKTOP_UA =
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
