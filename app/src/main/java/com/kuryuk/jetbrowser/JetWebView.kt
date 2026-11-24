@@ -8,7 +8,9 @@ import android.webkit.WebView
 import java.util.Collections
 
 /** Sayfada yakalanan video akışı (TV'de oynatmak için). */
-data class Media(val url: String, val type: String, val headers: Map<String, String>, val master: Boolean = false)
+/** duration: saniye, bilinmiyorsa -1 */
+data class Media(val url: String, val type: String, val headers: Map<String, String>,
+                 val master: Boolean = false, val duration: Double = -1.0)
 
 /** Telefon kumandası bağlıyken TV'nin ekran klavyesini açmayan WebView. */
 @SuppressLint("ViewConstructor")

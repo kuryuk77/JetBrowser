@@ -1265,7 +1265,8 @@ class MainActivity : Activity() {
         add("Yeni gizli sekme") { newTab(true); showHome(false) }
         add("Sekmeler (${tabs.size})") { tabsDialog() }
         if (onPage && w != null) {
-            if (!isTv) add("📺 TV'de aç") { sendToTv() }
+            if (!isTv) add("📺 Videoyu / sayfayı TV'de aç") { sendToTv() }
+            if (!isTv) add("🌐 Sadece sayfayı TV'de aç") { sendLine("U " + URLEncoder.encode(w.url ?: "", "UTF-8"), "TV'de açıldı ✓") }
             add("Yenile") { w.reload() }
             add("İleri") { if (w.canGoForward()) w.goForward() }
             add("Yakınlaştır") { w.zoomIn() }
@@ -1493,7 +1494,7 @@ class MainActivity : Activity() {
                         "mpd" -> "mpd"
                         else -> extType(Uri.parse(u)) ?: "mp4"
                     }
-                    addMedia(w, u, type, o.optString("r").ifEmpty { null }, null, k == "master")
+                    addMedia(w, u, type, o.optString("r").ifEmpty { null }, null, k == "master", o.optDouble("d", -1.0))
                 } catch (_: Exception) { }
             }
             WebViewCompat.addDocumentStartJavaScript(w, sniffJs, setOf("*"))
@@ -1512,11 +1513,13 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun addMedia(tab: JetWebView, url: String, type: String, referer: String?, origin: String?, master: Boolean) {
+    private fun addMedia(tab: JetWebView, url: String, type: String, referer: String?, origin: String?,
+                         master: Boolean, duration: Double = -1.0) {
         synchronized(tab.media) {
             val old = tab.media.indexOfFirst { it.url == url }
             if (old >= 0) {
-                if (master && !tab.media[old].master) tab.media[old] = tab.media[old].copy(master = true)
+                val m = tab.media[old]
+                tab.media[old] = m.copy(master = m.master || master, duration = maxOf(m.duration, duration))
                 return
             }
         }
@@ -1528,7 +1531,7 @@ class MainActivity : Activity() {
         if (o != null) h["Origin"] = o
         h["User-Agent"] = ua()
         try { CookieManager.getInstance().getCookie(url)?.let { h["Cookie"] = it } } catch (_: Exception) { }
-        tab.media.add(Media(url, type, h, master))
+        tab.media.add(Media(url, type, h, master, duration))
         synchronized(tab.media) { while (tab.media.size > 12) tab.media.removeAt(0) }
     }
 
@@ -1543,28 +1546,53 @@ class MainActivity : Activity() {
     private fun sendToTv() {
         val url = current?.url
         if (url == null) { toast("Önce bir sayfa açın"); return }
-        // aynı akışın alt listeleri (kalite seçenekleri) yerine ana listeyi öne al
-        val found = synchronized(current!!.media) { current!!.media.toList() }.reversed()
-            .sortedByDescending {
-                (if (it.master) 2 else 0) + (if (Regex("master|playlist|index", RegexOption.IGNORE_CASE).containsMatchIn(it.url)) 1 else 0)
-            }
+        val found = pickVideos(synchronized(current!!.media) { current!!.media.toList() })
         if (found.isEmpty()) {
             sendLine("U " + URLEncoder.encode(url, "UTF-8"), "Sayfa TV'de açıldı (video bulunamadı, önce videoyu oynatın)")
             return
         }
+        if (found.size == 1) { sendVideo(found[0]); return }
         val labels = found.map { m ->
-            "▶ Videoyu TV'de oynat\n" + m.type.uppercase() + " · " + (Uri.parse(m.url).host ?: "")
+            "▶ Videoyu TV'de oynat" + (if (m.duration > 0) "  ·  " + dur(m.duration) else "") +
+                "\n" + m.type.uppercase() + " · " + (Uri.parse(m.url).host ?: "")
         } + "🌐 Sayfayı TV'de aç"
         listPanel("TV'ye gönder", labels, { i ->
-            if (i < found.size) {
-                val m = found[i]
-                val hj = JSONObject(m.headers as Map<*, *>).toString()
-                val pos = current?.videoTime?.toLong() ?: 0L
-                sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos,
-                    "Video TV'de açılıyor ✓")
-                current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
-            } else sendLine("U " + URLEncoder.encode(url, "UTF-8"), "TV'de açıldı ✓")
+            if (i < found.size) sendVideo(found[i])
+            else sendLine("U " + URLEncoder.encode(url, "UTF-8"), "TV'de açıldı ✓")
         })
+    }
+
+    private fun dur(sec: Double): String {
+        val m = (sec / 60).toInt()
+        return if (m >= 60) "${m / 60} sa ${m % 60} dk" else if (m > 0) "$m dk" else "${sec.toInt()} sn"
+    }
+
+    /**
+     * Asıl videoyu seçer: aynı akışın kalite alt listelerini ana listede birleştirir,
+     * 5 dakikadan kısa olanları (reklam) atar, en uzun olanı başa koyar.
+     */
+    private fun pickVideos(all: List<Media>): List<Media> {
+        fun host(m: Media) = Uri.parse(m.url).host
+        val masters = all.filter { it.master }
+        var list = all.filter { m -> m.master || m.type != "m3u8" || masters.none { host(it) == host(m) } }
+        list = list.map { m ->
+            if (m.master && m.duration <= 0)
+                m.copy(duration = all.filter { !it.master && it.type == "m3u8" && host(it) == host(m) }
+                    .maxOfOrNull { it.duration } ?: -1.0)
+            else m
+        }
+        val long = list.filter { it.duration <= 0 || it.duration >= 300 }
+        // aynı sunucudan gelen süresi bilinmeyen alt listeler: en yenisini tut
+        return long.reversed().distinctBy { if (it.duration <= 0 && !it.master) host(it) + "?" else it.url }
+            .sortedWith(compareByDescending<Media> { it.duration }.thenByDescending { it.master })
+    }
+
+    private fun sendVideo(m: Media) {
+        val hj = JSONObject(m.headers as Map<*, *>).toString()
+        val pos = current?.videoTime?.toLong() ?: 0L
+        sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos,
+            "Video TV'de açılıyor ✓")
+        current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
     }
 
     /** Son bağlanılan TV'ye tek satırlık komut gönderir. */
