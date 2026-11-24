@@ -732,10 +732,13 @@ class MainActivity : Activity() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             if (store.adBlock && AdBlock.isAd(request.url))
                 return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
+            noteMedia(tab, request)
             return null
         }
 
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+            tab.pageUrl = url
+            tab.media.clear()
             if (tab === current && !showingHome) {
                 if (!urlEdit.hasFocus()) urlEdit.setText(url ?: "")
                 progress.visibility = View.VISIBLE
@@ -1466,9 +1469,56 @@ class MainActivity : Activity() {
     }
 
     /** Telefonda açık olan sayfayı tek dokunuşla TV'deki JetBrowser'da açar. */
+    /** Sayfanın (ve içindeki oynatıcıların) yüklediği video akışlarını not eder. */
+    private fun noteMedia(tab: JetWebView, r: WebResourceRequest) {
+        val path = (r.url.path ?: "").lowercase()
+        val type = when {
+            path.endsWith(".m3u8") -> "m3u8"
+            path.endsWith(".mpd") -> "mpd"
+            path.endsWith(".mp4") || path.endsWith(".m4v") -> "mp4"
+            path.endsWith(".webm") -> "webm"
+            path.endsWith(".mkv") -> "mkv"
+            else -> return
+        }
+        val url = r.url.toString()
+        if (tab.media.any { it.url == url }) return
+        val h = LinkedHashMap<String, String>()
+        r.requestHeaders?.forEach { (k, v) ->
+            if (k.equals("Referer", true) || k.equals("Origin", true)) h[k.replaceFirstChar { it.uppercase() }] = v
+        }
+        if (!h.containsKey("Referer")) tab.pageUrl?.let { h["Referer"] = it }
+        h["User-Agent"] = ua()
+        try { CookieManager.getInstance().getCookie(url)?.let { h["Cookie"] = it } } catch (_: Exception) { }
+        tab.media.add(Media(url, type, h))
+        while (tab.media.size > 12) tab.media.removeAt(0)
+    }
+
     private fun sendToTv() {
         val url = current?.url
         if (url == null) { toast("Önce bir sayfa açın"); return }
+        // aynı akışın alt listeleri (kalite seçenekleri) yerine ana listeyi öne al
+        val found = current?.media?.toList().orEmpty().reversed()
+            .sortedByDescending { if (Regex("master|playlist|index", RegexOption.IGNORE_CASE).containsMatchIn(it.url)) 1 else 0 }
+        if (found.isEmpty()) {
+            sendLine("U " + URLEncoder.encode(url, "UTF-8"), "TV'de açıldı ✓")
+            return
+        }
+        val labels = found.map { m ->
+            "▶ Videoyu TV'de oynat\n" + m.type.uppercase() + " · " + (Uri.parse(m.url).host ?: "")
+        } + "🌐 Sayfayı TV'de aç"
+        listPanel("TV'ye gönder", labels, { i ->
+            if (i < found.size) {
+                val m = found[i]
+                val hj = JSONObject(m.headers as Map<*, *>).toString()
+                sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8"),
+                    "Video TV'de açılıyor ✓")
+                current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
+            } else sendLine("U " + URLEncoder.encode(url, "UTF-8"), "TV'de açıldı ✓")
+        })
+    }
+
+    /** Son bağlanılan TV'ye tek satırlık komut gönderir. */
+    private fun sendLine(line: String, okMsg: String) {
         val p = getSharedPreferences("remote", MODE_PRIVATE)
         val host = p.getString("host", null)
         if (host == null) {
@@ -1483,13 +1533,13 @@ class MainActivity : Activity() {
                 java.net.Socket().use { s ->
                     s.connect(java.net.InetSocketAddress(host, port), 3000)
                     val w = java.io.PrintWriter(java.io.OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8), true)
-                    w.println("U " + URLEncoder.encode(url, "UTF-8"))
+                    w.println(line)
                     w.flush()
                     Thread.sleep(200)
                 }
                 true
             } catch (_: Exception) { false }
-            runOnUiThread { toast(if (ok) "TV'de açıldı ✓" else "TV'ye ulaşılamadı. TV açık mı?") }
+            runOnUiThread { toast(if (ok) okMsg else "TV'ye ulaşılamadı. TV açık mı?") }
         }.start()
     }
 

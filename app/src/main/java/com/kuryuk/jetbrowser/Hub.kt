@@ -123,7 +123,9 @@ object Hub {
         val acc = JetAccess.instance
         val cmd = line.substringBefore(' ')
         val arg = line.substringAfter(' ', "")
+        player?.let { if (it(line)) return }
         when (cmd) {
+            "VID" -> playVideo(arg)
             "W" -> launch()
             "X" -> switchApp()
             "UPD" -> selfUpdate()
@@ -175,6 +177,20 @@ object Hub {
         val out = recent.mapIndexed { i, p -> enc((if (i == 0) "● " else "↺ ") + labels[p]) + "=" + enc(p) } +
             rest.map { enc(labels[it]!!) + "=" + enc(it) }
         server?.send("L A " + out.joinToString("&"))
+    }
+
+    /** Video çalarken telefon komutlarını oynatıcıya yönlendirir. */
+    var player: ((String) -> Boolean)? = null
+
+    /** "VID <url> <tür> <başlıklar>" — videoyu TV oynatıcısında açar. */
+    private fun playVideo(arg: String) {
+        val a = app ?: return
+        val p = arg.split(' ')
+        val url = URLDecoder.decode(p.getOrNull(0) ?: return, "UTF-8")
+        startFromAnywhere(Intent(a, PlayerActivity::class.java)
+            .putExtra("url", url)
+            .putExtra("type", p.getOrNull(1) ?: "")
+            .putExtra("headers", URLDecoder.decode(p.getOrNull(2) ?: "", "UTF-8")))
     }
 
     private fun startFromAnywhere(i: Intent): Boolean {

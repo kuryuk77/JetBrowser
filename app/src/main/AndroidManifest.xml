@@ -108,6 +108,13 @@
             </intent-filter>
         </receiver>
 
+        <activity
+            android:name=".PlayerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
         <provider
             android:name=".FileShare"
             android:authorities="${applicationId}.files"
