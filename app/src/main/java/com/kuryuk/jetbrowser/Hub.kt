@@ -187,11 +187,20 @@ object Hub {
         val a = app ?: return
         val p = arg.split(' ')
         val url = URLDecoder.decode(p.getOrNull(0) ?: return, "UTF-8")
-        startFromAnywhere(Intent(a, PlayerActivity::class.java)
+        val i = Intent(a, PlayerActivity::class.java)
             .putExtra("url", url)
             .putExtra("type", p.getOrNull(1) ?: "")
             .putExtra("headers", URLDecoder.decode(p.getOrNull(2) ?: "", "UTF-8"))
-            .putExtra("pos", (p.getOrNull(3)?.toLongOrNull() ?: 0L) * 1000))
+            .putExtra("pos", (p.getOrNull(3)?.toLongOrNull() ?: 0L) * 1000)
+            .putExtra("subs", URLDecoder.decode(p.getOrNull(4) ?: "", "UTF-8"))
+        // oynatıcı zaten açıksa yeni videoyu doğrudan ona ver
+        val open = PlayerActivity.instance
+        if (open != null && !open.isFinishing) {
+            open.runOnUiThread { open.play(i) }
+            startFromAnywhere(Intent(a, PlayerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+            return
+        }
+        startFromAnywhere(i)
     }
 
     private fun startFromAnywhere(i: Intent): Boolean {

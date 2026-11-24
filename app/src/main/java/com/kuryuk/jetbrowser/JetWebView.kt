@@ -8,6 +8,9 @@ import android.webkit.WebView
 import java.util.Collections
 
 /** Sayfada yakalanan video akışı (TV'de oynatmak için). */
+/** Sayfada yakalanan altyazı dosyası. */
+data class Sub(val url: String, val label: String, val headers: Map<String, String>)
+
 /** duration: saniye, bilinmiyorsa -1 */
 data class Media(val url: String, val type: String, val headers: Map<String, String>,
                  val master: Boolean = false, val duration: Double = -1.0)
@@ -22,6 +25,7 @@ class JetWebView(ctx: Context, val incognito: Boolean) : WebView(ctx) {
     @Volatile var videoTime = 0.0
     /** Bu sayfada görülen video akışları, en eskisi başta. */
     val media: MutableList<Media> = Collections.synchronizedList(mutableListOf())
+    val subs: MutableList<Sub> = Collections.synchronizedList(mutableListOf())
 
     override fun onCheckIsTextEditor(): Boolean = if (noIme) false else super.onCheckIsTextEditor()
 

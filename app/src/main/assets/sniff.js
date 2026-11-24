@@ -13,6 +13,8 @@
       var d = 0, m, re = /#EXTINF:\s*([\d.]+)/g;
       while ((m = re.exec(t))) d += parseFloat(m[1]) || 0;
       rep(u, 'm3u8', /#EXT-X-ENDLIST/.test(t) ? d : -1);
+    } else if (t.indexOf('WEBVTT') === 0 || /^\d+\s*\r?\n\d\d:\d\d:\d\d[,.]\d+\s*-->/.test(t)) {
+      send({ s: abs(u), r: location.href });
     } else if (t.indexOf('<MPD') >= 0 || (t.indexOf('<?xml') === 0 && t.indexOf('MPD') > 0)) rep(u, 'mpd');
   }
   // XHR ile yüklenen video listeleri
@@ -46,6 +48,13 @@
   };
   // doğrudan dosya oynatan videolar ve oynatma konumu
   setInterval(function () {
+    var tr = document.querySelectorAll('track');
+    for (var j = 0; j < tr.length; j++) {
+      var k = tr[j];
+      if (k.src && !k.__jetT && (k.kind === 'subtitles' || k.kind === 'captions' || !k.kind)) {
+        k.__jetT = 1; send({ s: abs(k.src), l: k.label || k.srclang || '', r: location.href });
+      }
+    }
     var v = document.querySelectorAll('video');
     for (var i = 0; i < v.length; i++) {
       var e = v[i];

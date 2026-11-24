@@ -743,6 +743,7 @@ class MainActivity : Activity() {
             tab.pageUrl = url
             tab.media.clear()
             tab.videoTime = 0.0
+            tab.subs.clear()
             if (tab === current && !showingHome) {
                 if (!urlEdit.hasFocus()) urlEdit.setText(url ?: "")
                 progress.visibility = View.VISIBLE
@@ -1487,6 +1488,7 @@ class MainActivity : Activity() {
                 try {
                     val o = JSONObject(msg.data ?: return@addWebMessageListener)
                     if (o.has("t")) { w.videoTime = o.getDouble("t"); return@addWebMessageListener }
+                    if (o.has("s")) { addSub(w, o.getString("s"), o.optString("l"), o.optString("r").ifEmpty { null }); return@addWebMessageListener }
                     val u = o.optString("u")
                     if (!u.startsWith("http")) return@addWebMessageListener
                     val k = o.optString("k")
@@ -1536,7 +1538,30 @@ class MainActivity : Activity() {
         synchronized(tab.media) { while (tab.media.size > 12) tab.media.removeAt(0) }
     }
 
+    private fun addSub(tab: JetWebView, url: String, label: String, referer: String?) {
+        if (!url.startsWith("http")) return
+        synchronized(tab.subs) {
+            val old = tab.subs.indexOfFirst { it.url == url }
+            if (old >= 0) {
+                if (label.isNotBlank() && tab.subs[old].label.isBlank()) tab.subs[old] = tab.subs[old].copy(label = label)
+                return
+            }
+        }
+        val h = LinkedHashMap<String, String>()
+        (referer ?: tab.pageUrl)?.let { h["Referer"] = it }
+        h["User-Agent"] = ua()
+        try { CookieManager.getInstance().getCookie(url)?.let { h["Cookie"] = it } } catch (_: Exception) { }
+        tab.subs.add(Sub(url, label, h))
+        synchronized(tab.subs) { while (tab.subs.size > 8) tab.subs.removeAt(0) }
+    }
+
     private fun noteMedia(tab: JetWebView, r: WebResourceRequest) {
+        val p = (r.url.path ?: "").lowercase()
+        if (p.endsWith(".vtt") || p.endsWith(".srt")) {
+            val ref = r.requestHeaders.orEmpty().entries.firstOrNull { it.key.equals("Referer", true) }?.value
+            addSub(tab, r.url.toString(), "", ref)
+            return
+        }
         val type = extType(r.url) ?: return
         val hs = r.requestHeaders.orEmpty()
         val ref = hs.entries.firstOrNull { it.key.equals("Referer", true) }?.value
@@ -1591,7 +1616,16 @@ class MainActivity : Activity() {
     private fun sendVideo(m: Media) {
         val hj = JSONObject(m.headers as Map<*, *>).toString()
         val pos = current?.videoTime?.toLong() ?: 0L
-        sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos,
+        // altyazılar: Türkçe olanı başa al
+        val subs = synchronized(current!!.subs) { current!!.subs.toList() }
+        fun isTr(s: Sub) = Regex("(^|[^a-z])(tr|tur|turk|türk|turkce|türkçe|turkish)([^a-z]|$)", RegexOption.IGNORE_CASE)
+            .containsMatchIn(s.label + " " + Uri.parse(s.url).path)
+        val sj = JSONArray()
+        subs.sortedByDescending { isTr(it) }.take(5).forEach {
+            sj.put(JSONObject().put("u", it.url).put("l", it.label).put("tr", isTr(it)))
+        }
+        sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos +
+            " " + URLEncoder.encode(sj.toString(), "UTF-8"),
             "Video TV'de açılıyor ✓")
         current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
     }
