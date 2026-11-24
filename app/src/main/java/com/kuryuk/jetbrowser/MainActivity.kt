@@ -1662,11 +1662,22 @@ class MainActivity : Activity() {
                     val w = java.io.PrintWriter(java.io.OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8), true)
                     w.println(line)
                     w.flush()
-                    Thread.sleep(200)
+                    if (w.checkError()) throw java.io.IOException()
+                    runOnUiThread { toast(okMsg) }
+                    if (line.startsWith("VID ")) {
+                        // TV'nin video/altyazı bildirimlerini birkaç saniye dinle
+                        s.soTimeout = 1000
+                        val r = java.io.BufferedReader(java.io.InputStreamReader(s.getInputStream(), Charsets.UTF_8))
+                        val end = System.currentTimeMillis() + 15000
+                        while (System.currentTimeMillis() < end) {
+                            val l = try { r.readLine() } catch (_: java.net.SocketTimeoutException) { continue } ?: break
+                            if (l.startsWith("N ")) runOnUiThread { Toast.makeText(this, "TV: " + l.substring(2), Toast.LENGTH_LONG).show() }
+                        }
+                    } else Thread.sleep(200)
                 }
                 true
             } catch (_: Exception) { false }
-            runOnUiThread { toast(if (ok) okMsg else "TV'ye ulaşılamadı. TV açık mı?") }
+            if (!ok) runOnUiThread { toast("TV'ye ulaşılamadı. TV açık mı?") }
         }.start()
     }
 

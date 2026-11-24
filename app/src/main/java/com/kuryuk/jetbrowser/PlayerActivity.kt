@@ -13,6 +13,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -47,6 +49,7 @@ class PlayerActivity : Activity() {
             setBackgroundColor(0xFF000000.toInt())
             setShowNextButton(false)
             setShowPreviousButton(false)
+            setShowSubtitleButton(true)
             keepScreenOn = true
         }
         setContentView(view)
@@ -90,7 +93,7 @@ class PlayerActivity : Activity() {
         // altyazıları TV'nin kendisi indirir ve Türkçe karakterleri düzeltir, sonra oynatma başlar
         Thread {
             val files = subs.mapIndexedNotNull { k, s -> fetchSub(s, headers, k)?.let { Pair(s, it) } }
-            if (subs.isNotEmpty() && files.isEmpty()) Hub.server?.send("N TV altyazıyı indiremedi")
+            if (subs.isNotEmpty() && files.isEmpty()) note("TV altyazıları açamadı (${subs.size} dosya geldi)")
             runOnUiThread { if (gen == generation && !isFinishing) start(url, type, pos, headers, files) }
         }.start()
     }
@@ -134,6 +137,26 @@ class PlayerActivity : Activity() {
             .setSubtitleConfigurations(subCfg)
             .build())
         p.addListener(object : Player.Listener {
+            private var checked = false
+            override fun onTracksChanged(tracks: Tracks) {
+                if (checked || tracks.groups.isEmpty()) return
+                checked = true
+                val text = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
+                if (text.isEmpty()) {
+                    if (subs.isNotEmpty()) note("Altyazı dosyaları geldi ama oynatıcı okuyamadı")
+                    return
+                }
+                // hiçbiri seçilmediyse Türkçe olanı (yoksa ilkini) aç
+                if (text.none { it.isSelected }) {
+                    val g = text.firstOrNull { (0 until it.length).any { k -> it.getTrackFormat(k).language == "tr" } } ?: text[0]
+                    p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                        .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, 0))
+                        .build()
+                }
+                note("Altyazı açık ✓ (${text.size} seçenek, CC tuşundan değiştirilebilir)")
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 Toast.makeText(this@PlayerActivity, "Video oynatılamadı", Toast.LENGTH_LONG).show()
                 Hub.server?.send("N TV videoyu oynatamadı. Listeden başka bir video seçin ya da sayfayı açın")
@@ -142,7 +165,6 @@ class PlayerActivity : Activity() {
         if (pos > 5000) p.seekTo(pos - 3000)
         p.prepare()
         p.playWhenReady = true
-        if (subs.isNotEmpty()) Hub.server?.send("N Altyazı eklendi (${subs.size})")
     }
 
     /** Altyazıyı indirir; UTF-8 değilse Türkçe kodlamadan (Windows-1254) çevirir. */
@@ -157,11 +179,21 @@ class PlayerActivity : Activity() {
                 .decode(ByteBuffer.wrap(bytes)).toString()
         } catch (_: Exception) { String(bytes, Charset.forName("windows-1254")) }
         }
-        val clean = text.removePrefix("\uFEFF").trimStart()
+        val clean = text.trimStart('\uFEFF', ' ', '\n', '\r', '\t')
         val vtt = clean.startsWith("WEBVTT")
-        if (!vtt && !Regex("\\d\\d:\\d\\d:\\d\\d[,.]\\d+\\s*-->").containsMatchIn(clean.take(2000))) null
+        val head = clean.take(4000)
+        val timed = Regex("(\\d+:)?\\d\\d:\\d\\d[,.]\\d+\\s*-->").containsMatchIn(head)
+        // ilerleme çubuğu küçük resimleri (thumbnails.vtt) altyazı değildir
+        val thumbs = Regex("\\.(jpe?g|png|webp)(#xywh|\\s|$)", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE)).containsMatchIn(head)
+        if (!timed || thumbs) null
         else File(cacheDir, "sub_$k" + if (vtt) ".vtt" else ".srt").apply { writeText(clean) }
     } catch (_: Exception) { null }
+
+    /** Hem TV'de hem telefonda kısa bilgi gösterir. */
+    private fun note(msg: String) {
+        runOnUiThread { Toast.makeText(this, msg, Toast.LENGTH_LONG).show() }
+        Hub.server?.send("N $msg")
+    }
 
     /** Telefon kumandasından gelen komutlar; true = burada işlendi. */
     private fun onRemote(line: String): Boolean {
