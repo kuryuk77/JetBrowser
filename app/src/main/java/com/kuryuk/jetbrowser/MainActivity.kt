@@ -1261,6 +1261,7 @@ class MainActivity : Activity() {
         val onPage = !showingHome && w != null
         val items = mutableListOf<Pair<String, () -> Unit>>()
         fun add(t: String, f: () -> Unit) { items.add(Pair(t, f)) }
+        if (!isTv) add("🎮 Kumanda") { startActivity(Intent(this, RemoteActivity::class.java)) }
         add("Yeni sekme") { newTab(false); showHome(false) }
         add("Yeni gizli sekme") { newTab(true); showHome(false) }
         add("Sekmeler (${tabs.size})") { tabsDialog() }
