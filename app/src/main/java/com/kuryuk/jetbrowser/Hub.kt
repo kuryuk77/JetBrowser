@@ -192,7 +192,9 @@ object Hub {
             .putExtra("type", p.getOrNull(1) ?: "")
             .putExtra("headers", URLDecoder.decode(p.getOrNull(2) ?: "", "UTF-8"))
             .putExtra("pos", (p.getOrNull(3)?.toLongOrNull() ?: 0L) * 1000)
-            .putExtra("subs", URLDecoder.decode(p.getOrNull(4) ?: "", "UTF-8"))
+            .putExtra("subsFile", File(a.cacheDir, "subs.json").apply {
+                writeText(URLDecoder.decode(p.getOrNull(4) ?: "", "UTF-8"))
+            }.path)
         // oynatıcı zaten açıksa yeni videoyu doğrudan ona ver
         val open = PlayerActivity.instance
         if (open != null && !open.isFinishing) {

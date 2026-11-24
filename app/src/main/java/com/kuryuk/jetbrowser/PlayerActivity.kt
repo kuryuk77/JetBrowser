@@ -77,7 +77,7 @@ class PlayerActivity : Activity() {
         } catch (_: Exception) { }
         val subs = ArrayList<Sub>()
         try {
-            val a = JSONArray(i.getStringExtra("subs") ?: "[]")
+            val a = JSONArray(i.getStringExtra("subsFile")?.let { File(it).readText() } ?: i.getStringExtra("subs") ?: "[]")
             for (k in 0 until a.length()) {
                 val s = a.getJSONObject(k)
                 val h = HashMap<String, String>()
@@ -92,7 +92,9 @@ class PlayerActivity : Activity() {
         if (subs.isNotEmpty()) Toast.makeText(this, "Altyazı hazırlanıyor…", Toast.LENGTH_SHORT).show()
         // altyazıları TV'nin kendisi indirir ve Türkçe karakterleri düzeltir, sonra oynatma başlar
         Thread {
+            val seen = HashSet<Int>()
             val files = subs.mapIndexedNotNull { k, s -> fetchSub(s, headers, k)?.let { Pair(s, it) } }
+                .filter { seen.add(it.second.readText().hashCode()) }
             if (subs.isNotEmpty() && files.isEmpty()) note("TV altyazıları açamadı (${subs.size} dosya geldi)")
             runOnUiThread { if (gen == generation && !isFinishing) start(url, type, pos, headers, files) }
         }.start()
@@ -128,7 +130,7 @@ class PlayerActivity : Activity() {
             MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(f))
                 .setMimeType(if (f.name.endsWith(".vtt")) MimeTypes.TEXT_VTT else MimeTypes.APPLICATION_SUBRIP)
                 .setLanguage(if (s.turkish) "tr" else null)
-                .setLabel(s.label.ifBlank { "Altyazı ${k + 1}" })
+                .setLabel(s.label.ifBlank { "Altyazı ${k + 1}" } + if (s.text != null) " (ekrandan)" else "")
                 .setSelectionFlags(if (k == first) C.SELECTION_FLAG_DEFAULT else 0)
                 .build()
         }
@@ -146,15 +148,19 @@ class PlayerActivity : Activity() {
                     if (subs.isNotEmpty()) note("Altyazı dosyaları geldi ama oynatıcı okuyamadı")
                     return
                 }
-                // hiçbiri seçilmediyse Türkçe olanı (yoksa ilkini) aç
-                if (text.none { it.isSelected }) {
-                    val g = text.firstOrNull { (0 until it.length).any { k -> it.getTrackFormat(k).language == "tr" } } ?: text[0]
+                // bizim eklediklerimizi (adı olan) videonun kendi boş kanalına tercih et; Türkçe önce
+                val ours = text.filter { it.getTrackFormat(0).label != null }
+                val sel = text.filter { it.isSelected }
+                if (sel.isEmpty() || (ours.isNotEmpty() && sel.none { it in ours })) {
+                    val pool = ours.ifEmpty { text }
+                    val g = pool.firstOrNull { it.getTrackFormat(0).language == "tr" } ?: pool[0]
                     p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
                         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                         .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, 0))
                         .build()
                 }
-                note("Altyazı açık ✓ (${text.size} seçenek, CC tuşundan değiştirilebilir)")
+                if (ours.isEmpty()) note("Gönderilen altyazılar açılamadı; videonun kendi altyazısı denendi")
+                else note("Altyazı açık ✓ (${ours.size} seçenek, CC tuşundan değiştirilebilir)")
             }
 
             override fun onPlayerError(error: PlaybackException) {

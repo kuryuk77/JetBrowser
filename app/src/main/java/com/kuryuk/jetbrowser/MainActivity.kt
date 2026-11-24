@@ -1630,9 +1630,8 @@ class MainActivity : Activity() {
         fun isTr(s: Sub) = Regex("(^|[^a-z])(tr|tur|turk|türk|turkce|türkçe|turkish)([^a-z]|$)", RegexOption.IGNORE_CASE)
             .containsMatchIn(s.label + " " + Uri.parse(s.url).path)
         val sj = JSONArray()
-        // aynı altyazının hem dosyası hem okunmuş hali varsa dosyayı tercih et
-        val pick = subs.filter { it.text == null } .ifEmpty { subs }
-        pick.sortedByDescending { isTr(it) }.take(5).forEach {
+        // oynatıcıdan okunan altyazı (ekranda görünen) en güvenilir olanı: önce onlar, sonra dosyalar
+        subs.sortedWith(compareByDescending<Sub> { it.text != null }.thenByDescending { isTr(it) }).take(6).forEach {
             val o = JSONObject().put("u", it.url).put("l", it.label).put("tr", isTr(it))
             if (it.text != null) o.put("t", it.text) else o.put("h", JSONObject(it.headers as Map<*, *>))
             sj.put(o)
