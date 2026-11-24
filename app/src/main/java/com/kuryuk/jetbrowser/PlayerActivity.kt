@@ -123,6 +123,7 @@ class PlayerActivity : Activity() {
             .build()
         player = p
         view.player = p
+        applySubStyle()
 
         val mime = when (type) {
             "m3u8" -> MimeTypes.APPLICATION_M3U8
@@ -223,6 +224,26 @@ class PlayerActivity : Activity() {
         score["tr"] = (score["tr"] ?: 0) + text.count { it in "ğşıİĞŞ" }
         val best = score.maxByOrNull { it.value } ?: return null
         return if (best.value >= 8) best.key else null
+    }
+
+    /** Ayarlardaki altyazı rengi, boyutu, yüksekliği ve arka planı. */
+    private fun applySubStyle() {
+        val st = Store(this)
+        val sv = view.subtitleView ?: return
+        val fg = Store.SUB_COLOR_VALUES[st.subColor.coerceIn(0, 3)]
+        val bg = when (st.subBg) { 1 -> 0x99000000.toInt(); 2 -> 0xFF000000.toInt(); else -> 0 }
+        sv.setApplyEmbeddedStyles(false)
+        sv.setApplyEmbeddedFontSizes(false)
+        sv.setStyle(androidx.media3.ui.CaptionStyleCompat(fg, bg, 0,
+            if (st.subBg == 0) androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE else androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE,
+            0xFF000000.toInt(), null))
+        sv.setFractionalTextSize(Store.SUB_SIZE_VALUES[st.subSize.coerceIn(0, 3)])
+        sv.setBottomPaddingFraction(Store.SUB_POS_VALUES[st.subPos.coerceIn(0, 2)])
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) applySubStyle()   // ayarlar değiştiyse geri dönünce uygula
     }
 
     /** Hem TV'de hem telefonda kısa bilgi gösterir. */

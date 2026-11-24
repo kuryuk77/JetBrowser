@@ -194,6 +194,10 @@ object Hub {
         wakeScreen()
         val p = arg.split(' ')
         val url = URLDecoder.decode(p.getOrNull(0) ?: return, "UTF-8")
+        // telefondaki altyazı görünümü ayarını TV'ye de uygula
+        p.getOrNull(5)?.split(',')?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 4 }?.let { v ->
+            val st = Store(a); st.subColor = v[0]; st.subSize = v[1]; st.subPos = v[2]; st.subBg = v[3]
+        }
         val i = Intent(a, PlayerActivity::class.java)
             .putExtra("url", url)
             .putExtra("type", p.getOrNull(1) ?: "")

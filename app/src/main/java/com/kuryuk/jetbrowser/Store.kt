@@ -76,11 +76,33 @@ class Store(ctx: Context) {
         get() = p.getInt("cspeed", 2)
         set(v) = p.edit().putInt("cspeed", v).apply()
 
+    // TV oynatıcısında altyazı görünümü
+    var subColor: Int
+        get() = p.getInt("subColor", 0)
+        set(v) = p.edit().putInt("subColor", v).apply()
+    var subSize: Int
+        get() = p.getInt("subSize", 1)
+        set(v) = p.edit().putInt("subSize", v).apply()
+    var subPos: Int
+        get() = p.getInt("subPos", 0)
+        set(v) = p.edit().putInt("subPos", v).apply()
+    var subBg: Int
+        get() = p.getInt("subBg", 0)
+        set(v) = p.edit().putInt("subBg", v).apply()
+
     var textZoom: Int
         get() = p.getInt("zoom", 100)
         set(v) = p.edit().putInt("zoom", v).apply()
 
     companion object {
+        val SUB_COLORS = arrayOf("Beyaz", "Sarı", "Açık yeşil", "Açık mavi")
+        val SUB_COLOR_VALUES = intArrayOf(0xFFFFFFFF.toInt(), 0xFFFFE04A.toInt(), 0xFFB6F5A0.toInt(), 0xFFA8E4FF.toInt())
+        val SUB_SIZES = arrayOf("Küçük", "Orta", "Büyük", "Çok büyük")
+        val SUB_SIZE_VALUES = floatArrayOf(0.045f, 0.055f, 0.068f, 0.082f)
+        val SUB_POSITIONS = arrayOf("En altta", "Biraz yukarıda", "Daha yukarıda")
+        val SUB_POS_VALUES = floatArrayOf(0.03f, 0.10f, 0.18f)
+        val SUB_BGS = arrayOf("Yok (siyah kenarlı yazı)", "Yarı saydam kutu", "Siyah kutu")
+
         val ENGINES = arrayOf("Google", "Bing", "DuckDuckGo", "Yandex")
         val ENGINE_URLS = arrayOf(
             "https://www.google.com/search?q=",

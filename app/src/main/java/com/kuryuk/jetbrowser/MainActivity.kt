@@ -1585,6 +1585,8 @@ class MainActivity : Activity() {
             "Kumanda imleci (TV kumandası): " + onOff(cursorMode),
             "İmleç hızı: " + speeds[(store.cursorSpeed - 1).coerceIn(0, 2)],
             "Yazı boyutu: %" + store.textZoom,
+            "Altyazı görünümü (TV oynatıcı): " + Store.SUB_COLORS[store.subColor.coerceIn(0, 3)] + " · " +
+                Store.SUB_SIZES[store.subSize.coerceIn(0, 3)] + " · " + Store.SUB_POSITIONS[store.subPos.coerceIn(0, 2)],
             "Telefon kumandası adresi: " + RemoteServer.localIp() + ":" + remote.port,
             "Varsayılan tarayıcı yap",
             "Güncellemeyi denetle",
@@ -1607,11 +1609,29 @@ class MainActivity : Activity() {
                 6 -> listPanel("Yazı boyutu", zooms.map { "%$it" }, { w ->
                     store.textZoom = zooms[w]; tabs.forEach { it.settings.textZoom = zooms[w] }; settingsDialog()
                 }, selected = zooms.indexOf(store.textZoom))
-                7 -> remoteTile()
-                8 -> try {
+                7 -> subStyleDialog()
+                8 -> remoteTile()
+                9 -> try {
                     startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
                 } catch (_: Exception) { toast("Bu cihazda açılamadı") }
                 else -> checkUpdate()
+            }
+        })
+    }
+
+    private fun subStyleDialog() {
+        val items = listOf(
+            "Renk: " + Store.SUB_COLORS[store.subColor.coerceIn(0, 3)],
+            "Boyut: " + Store.SUB_SIZES[store.subSize.coerceIn(0, 3)],
+            "Konum: " + Store.SUB_POSITIONS[store.subPos.coerceIn(0, 2)],
+            "Arka plan: " + Store.SUB_BGS[store.subBg.coerceIn(0, 2)]
+        )
+        listPanel("Altyazı görünümü", items, { i ->
+            when (i) {
+                0 -> listPanel("Altyazı rengi", Store.SUB_COLORS.toList(), { v -> store.subColor = v; subStyleDialog() }, selected = store.subColor)
+                1 -> listPanel("Altyazı boyutu", Store.SUB_SIZES.toList(), { v -> store.subSize = v; subStyleDialog() }, selected = store.subSize)
+                2 -> listPanel("Altyazı konumu", Store.SUB_POSITIONS.toList(), { v -> store.subPos = v; subStyleDialog() }, selected = store.subPos)
+                3 -> listPanel("Altyazı arka planı", Store.SUB_BGS.toList(), { v -> store.subBg = v; subStyleDialog() }, selected = store.subBg)
             }
         })
     }
@@ -1831,7 +1851,8 @@ class MainActivity : Activity() {
         }
         val n = sj.length()
         sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos +
-            " " + URLEncoder.encode(sj.toString(), "UTF-8"),
+            " " + URLEncoder.encode(sj.toString(), "UTF-8") +
+            " " + listOf(store.subColor, store.subSize, store.subPos, store.subBg).joinToString(","),
             "Video TV'de açılıyor ✓" + if (n > 0) "  ($n altyazı)" else "  (altyazı bulunamadı)")
         current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
     }
