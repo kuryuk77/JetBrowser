@@ -14,7 +14,11 @@
       while ((m = re.exec(t))) d += parseFloat(m[1]) || 0;
       rep(u, 'm3u8', /#EXT-X-ENDLIST/.test(t) ? d : -1);
     } else if (t.indexOf('WEBVTT') === 0 || /^\d+\s*\r?\n\d\d:\d\d:\d\d[,.]\d+\s*-->/.test(t)) {
-      send({ s: abs(u), r: location.href });
+      // altyazının içeriğini olduğu gibi gönder (TV'nin ayrıca indirmesi gerekmez)
+      if (/\.(jpe?g|png|webp)(#xywh|\s|$)/im.test(t.slice(0, 4000))) return;  // küçük resim listesi
+      var a = abs(u), name = decodeURIComponent((a.split('?')[0].split('/').pop()) || '');
+      if (t.length < 3000000) send({ vtt: t, l: name, su: a, r: location.href });
+      else send({ s: a, r: location.href });
     } else if (t.indexOf('<MPD') >= 0 || (t.indexOf('<?xml') === 0 && t.indexOf('MPD') > 0)) rep(u, 'mpd');
   }
   // XHR ile yüklenen video listeleri
@@ -72,6 +76,7 @@
       var tt = e.textTracks || [];
       for (var q = 0; q < tt.length; q++) {
         var T = tt[q];
+        if (T.kind === 'metadata' || /id3|metadata/i.test(T.label || '')) continue;
         var cs = null;
         try { cs = T.cues; } catch (x) {}
         if (!cs || !cs.length || T.__jetN === cs.length) continue;

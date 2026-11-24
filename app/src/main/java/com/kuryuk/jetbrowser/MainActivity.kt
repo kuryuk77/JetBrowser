@@ -1490,7 +1490,8 @@ class MainActivity : Activity() {
                     if (o.has("t")) { w.videoTime = o.getDouble("t"); return@addWebMessageListener }
                     if (o.has("vtt")) {
                         val l = o.optString("l")
-                        val key = "inline:" + l
+                        if (Regex("id3|metadata", RegexOption.IGNORE_CASE).containsMatchIn(l)) return@addWebMessageListener
+                        val key = "inline:" + o.optString("su").ifEmpty { l }
                         synchronized(w.subs) {
                             w.subs.removeAll { it.url == key }
                             w.subs.add(Sub(key, l, emptyMap(), o.getString("vtt")))
