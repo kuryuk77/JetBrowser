@@ -569,13 +569,13 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        logo.addView(ImageView(this).apply { setImageResource(R.drawable.ic_jet) }, LinearLayout.LayoutParams(dp(64), dp(64)))
+        logo.addView(ImageView(this).apply { setImageResource(R.drawable.logo_browser) }, LinearLayout.LayoutParams(dp(76), dp(76)))
         logo.addView(TextView(this).apply {
-            text = SpannableString("JetBrowser").apply { setSpan(ForegroundColorSpan(ACCENT), 0, 3, 0) }
+            text = SpannableString("Jet Browser").apply { setSpan(ForegroundColorSpan(ACCENT), 4, 11, 0) }
             textSize = 32f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
-            setPadding(dp(6), 0, 0, 0)
+            setPadding(dp(12), 0, 0, 0)
         })
         col.addView(logo)
 
@@ -1428,14 +1428,14 @@ class MainActivity : Activity() {
             split(Pair(R.drawable.ic_refresh, "Yenile"), { w.reload() }, Pair(R.drawable.ic_forward, "İleri"), { if (w.canGoForward()) w.goForward() })
             box.addView(zoomRow(w), rowParams())
         }
-        split(Pair(R.drawable.ic_tabs, "Sekmeler (${tabs.size})"), { tabsDialog() },
-            Pair(R.drawable.ic_incognito, "Gizli sekme"), { newTab(true); showHome(false) })
         split(Pair(R.drawable.ic_star, "Yer imleri"), { bookmarksDialog() }, Pair(R.drawable.ic_history, "Geçmiş"), { historyDialog() })
         if (onPage && w != null) split(Pair(R.drawable.ic_bookmark_add, "Hızlı erişime ekle"), { editDialDialog(-1, w.title ?: "", w.url ?: "") },
             Pair(R.drawable.ic_share, "Paylaş"), { share(w.url) })
         split(Pair(R.drawable.ic_download, "İndirilenler"), { downloadsDialog() }, Pair(R.drawable.ic_settings, "Ayarlar"), { settingsDialog() })
-        split(Pair(R.drawable.ic_desktop, "Masaüstü: " + onOff(store.desktopMode)), { toggleDesktop() },
-            Pair(R.drawable.ic_mouse, "İmleç: " + onOff(cursorMode)), { toggleCursor() })
+        if (isTv) split(Pair(R.drawable.ic_desktop, "Masaüstü: " + onOff(store.desktopMode)), { toggleDesktop() },
+            Pair(R.drawable.ic_mouse, "Kumanda imleci: " + onOff(cursorMode)), { toggleCursor() })
+        else split(Pair(R.drawable.ic_desktop, "Masaüstü: " + onOff(store.desktopMode)), { toggleDesktop() },
+            Pair(R.drawable.ic_incognito, "Gizli sekme"), { newTab(true); showHome(false) })
         row(R.drawable.ic_exit, "Çıkış") { finishAndRemoveTask() }
         panel = openPanel("Menü", null, box, emptyList())
     }
@@ -1582,7 +1582,7 @@ class MainActivity : Activity() {
             "Reklam engelleyici: " + onOff(store.adBlock),
             "Açılır pencere engeli: " + onOff(store.popupBlock),
             "Masaüstü sitesi: " + onOff(store.desktopMode),
-            "Kumanda imleci (TV kumandası): " + onOff(cursorMode),
+            "Kumanda imleci (TV kumandası): " + onOff(cursorMode) + if (isTv) "" else "  — yalnızca TV'de",
             "İmleç hızı: " + speeds[(store.cursorSpeed - 1).coerceIn(0, 2)],
             "Yazı boyutu: %" + store.textZoom,
             "Altyazı görünümü (TV oynatıcı): " + Store.SUB_COLORS[store.subColor.coerceIn(0, 3)] + " · " +

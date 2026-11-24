@@ -161,8 +161,8 @@ class RemoteActivity : Activity() {
             setPadding(dp(14), dp(8), dp(14), dp(8))
             background = GradientDrawable().apply { setColor(0x1FFFFFFF); setStroke(dp(1), 0x2EFFFFFF); cornerRadius = dp(100).toFloat() }
         }
-        top.addView(android.widget.ImageView(this).apply { setImageResource(R.drawable.ic_jet) },
-            LinearLayout.LayoutParams(dp(30), dp(30)).apply { rightMargin = dp(10) })
+        top.addView(android.widget.ImageView(this).apply { setImageResource(R.drawable.logo_remote) },
+            LinearLayout.LayoutParams(dp(34), dp(34)).apply { rightMargin = dp(10) })
         status = TextView(this).apply {
             text = "TV aranıyor…"
             setTextColor(Color.WHITE)

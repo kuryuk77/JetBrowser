@@ -2,6 +2,7 @@
     <color name="bg">#FF1A1B1E</color>
     <color name="bar">#FF1A1B1E</color>
     <color name="tile">#26FFFFFF</color>
+    <color name="icon_bg">#FF1E2023</color>
     <color name="accent">#FFEBC04F</color>
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@drawable/app_bg</item>
