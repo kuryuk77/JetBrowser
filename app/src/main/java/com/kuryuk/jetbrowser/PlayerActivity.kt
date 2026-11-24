@@ -125,12 +125,21 @@ class PlayerActivity : Activity() {
             "mpd" -> MimeTypes.APPLICATION_MPD
             else -> null
         }
-        val first = subs.indexOfFirst { it.first.turkish }.let { if (it < 0) 0 else it }
+        // dili altyazının içeriğinden bul; aynı dilden birden fazlaysa numaralandır
+        val langs = subs.map { (s, f) -> detectLang(f.readText()) ?: if (s.turkish) "tr" else null }
+        val seenLang = HashMap<String?, Int>()
+        val labels = langs.mapIndexed { k, l ->
+            val n = (seenLang[l] ?: 0) + 1
+            seenLang[l] = n
+            val name = LANG_NAMES[l] ?: subs[k].first.label.takeIf { it.isNotBlank() && it.length < 30 } ?: "Altyazı"
+            if (n > 1) "$name $n" else name
+        }
+        val first = langs.indexOf("tr").let { if (it < 0) 0 else it }
         val subCfg = subs.mapIndexed { k, (s, f) ->
             MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(f))
                 .setMimeType(if (f.name.endsWith(".vtt")) MimeTypes.TEXT_VTT else MimeTypes.APPLICATION_SUBRIP)
-                .setLanguage(if (s.turkish) "tr" else null)
-                .setLabel(s.label.ifBlank { "Altyazı ${k + 1}" } + if (s.text != null) " (ekrandan)" else "")
+                .setLanguage(langs[k])
+                .setLabel(labels[k])
                 .setSelectionFlags(if (k == first) C.SELECTION_FLAG_DEFAULT else 0)
                 .build()
         }
@@ -195,6 +204,23 @@ class PlayerActivity : Activity() {
         else File(cacheDir, "sub_$k" + if (vtt) ".vtt" else ".srt").apply { writeText(clean) }
     } catch (_: Exception) { null }
 
+    /** Altyazının dilini metindeki sık kelimelere ve harflere bakarak tahmin eder. */
+    private fun detectLang(raw: String): String? {
+        val text = raw.lineSequence()
+            .filter { !it.contains("-->") && !it.startsWith("WEBVTT") && it.isNotBlank() && it.trim().toIntOrNull() == null }
+            .take(400).joinToString(" ")
+            .replace(Regex("<[^>]*>|\\{[^}]*\\}"), " ")
+        if (text.length < 40) return null
+        if (text.count { it in '\u0400'..'\u04FF' } > 30) return "ru"
+        if (text.count { it in '\u0600'..'\u06FF' } > 30) return "ar"
+        val words = text.lowercase(java.util.Locale("tr")).split(Regex("[^\\p{L}']+")).filter { it.isNotEmpty() }
+        val score = HashMap<String, Int>()
+        for ((lang, set) in COMMON) score[lang] = words.count { it in set }
+        score["tr"] = (score["tr"] ?: 0) + text.count { it in "ğşıİĞŞ" }
+        val best = score.maxByOrNull { it.value } ?: return null
+        return if (best.value >= 8) best.key else null
+    }
+
     /** Hem TV'de hem telefonda kısa bilgi gösterir. */
     private fun note(msg: String) {
         runOnUiThread { Toast.makeText(this, msg, Toast.LENGTH_LONG).show() }
@@ -236,5 +262,20 @@ class PlayerActivity : Activity() {
 
     companion object {
         @Volatile var instance: PlayerActivity? = null
+
+        private val LANG_NAMES = mapOf(
+            "tr" to "Türkçe", "en" to "İngilizce", "de" to "Almanca", "fr" to "Fransızca",
+            "es" to "İspanyolca", "it" to "İtalyanca", "ru" to "Rusça", "ar" to "Arapça"
+        )
+
+        private val COMMON = mapOf(
+            "tr" to setOf("ve", "bir", "bu", "ne", "için", "ama", "değil", "ben", "sen", "mi", "mı", "çok", "var", "yok",
+                "şey", "evet", "hayır", "da", "de", "beni", "seni", "neden", "nasıl", "burada", "şimdi"),
+            "en" to setOf("the", "you", "and", "is", "to", "it", "that", "what", "this", "not", "i'm", "don't", "we", "are", "have"),
+            "de" to setOf("der", "die", "und", "ist", "nicht", "ich", "das", "du", "wir", "sie", "ein", "es", "was"),
+            "fr" to setOf("le", "et", "est", "je", "pas", "vous", "que", "les", "une", "c'est", "nous", "il", "ce"),
+            "es" to setOf("el", "que", "y", "no", "es", "lo", "los", "una", "por", "qué", "pero", "está", "yo"),
+            "it" to setOf("il", "che", "non", "è", "di", "un", "una", "per", "sono", "io", "ma", "cosa", "questo")
+        )
     }
 }
