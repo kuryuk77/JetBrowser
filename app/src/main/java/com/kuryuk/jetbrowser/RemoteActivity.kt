@@ -484,6 +484,11 @@ class RemoteActivity : Activity() {
                     p.getOrNull(3)?.takeIf { WakeOnLan.valid(it) }?.let { prefs.edit().putString("mac", WakeOnLan.normalize(it)).apply() }
                     main.post { if (connected) setStatus("● Bağlı: " + connName.removePrefix("JetBrowser ") + "  (1.0." + p.getOrNull(1) + ")") }
                 }
+                else if (line.startsWith("SS ")) {
+                    line.substring(3).split(',').mapNotNull { it.toIntOrNull() }.takeIf { it.size == 4 }?.let { v ->
+                        val st = Store(this); st.subColor = v[0]; st.subSize = v[1]; st.subPos = v[2]; st.subBg = v[3]
+                    }
+                }
                 else if (line.startsWith("N ")) main.post { Toast.makeText(this, line.substring(2), Toast.LENGTH_LONG).show() }
             }
         } catch (_: Exception) { }

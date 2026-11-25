@@ -57,6 +57,7 @@ class PlayerActivity : Activity() {
             keepScreenOn = true
         }
         setContentView(view)
+        addStyleButton()
         play(intent)
     }
 
@@ -226,6 +227,71 @@ class PlayerActivity : Activity() {
         return if (best.value >= 8) best.key else null
     }
 
+    private var dlg: android.app.AlertDialog? = null
+
+    /** CC tuşunun yanına "Aa" (altyazı görünümü) tuşu ekler. */
+    private fun addStyleButton() {
+        val bar = view.findViewById<android.view.ViewGroup>(androidx.media3.ui.R.id.exo_basic_controls) ?: return
+        val cc = view.findViewById<View>(androidx.media3.ui.R.id.exo_subtitle)
+        val d = resources.displayMetrics.density
+        val b = android.widget.TextView(this).apply {
+            text = "Aa"
+            textSize = 17f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            gravity = android.view.Gravity.CENTER
+            isFocusable = true
+            isClickable = true
+            background = android.graphics.drawable.StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_focused), android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(0x33FFFFFF); setStroke((2 * d).toInt(), 0xFFEBC04F.toInt())
+                })
+                addState(intArrayOf(), android.graphics.drawable.ColorDrawable(0))
+            }
+            contentDescription = "Altyazı görünümü"
+            setOnClickListener { styleDialog() }
+        }
+        val i = if (cc != null) bar.indexOfChild(cc) + 1 else 0
+        bar.addView(b, i, android.view.ViewGroup.LayoutParams((48 * d).toInt(), (48 * d).toInt()))
+    }
+
+    /** Altyazı rengi / boyutu / konumu / arka planı; seçince hemen uygulanır. */
+    private fun styleDialog(focus: Int = 0) {
+        val st = Store(this)
+        val items = arrayOf(
+            "Renk:  " + Store.SUB_COLORS[st.subColor.coerceIn(0, 3)],
+            "Boyut:  " + Store.SUB_SIZES[st.subSize.coerceIn(0, 3)],
+            "Konum:  " + Store.SUB_POSITIONS[st.subPos.coerceIn(0, 2)],
+            "Arka plan:  " + Store.SUB_BGS[st.subBg.coerceIn(0, 2)]
+        )
+        dlg = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("Altyazı görünümü (değiştirmek için seçin)")
+            .setItems(items) { _, w ->
+                when (w) {
+                    0 -> st.subColor = (st.subColor + 1) % Store.SUB_COLORS.size
+                    1 -> st.subSize = (st.subSize + 1) % Store.SUB_SIZES.size
+                    2 -> st.subPos = (st.subPos + 1) % Store.SUB_POSITIONS.size
+                    3 -> st.subBg = (st.subBg + 1) % Store.SUB_BGS.size
+                }
+                applySubStyle()
+                view.post { styleDialog(w) }
+            }
+            .setNegativeButton("Tamam", null)
+            .show()
+        dlg?.listView?.let { lv -> lv.post { lv.setSelection(focus); lv.getChildAt(focus)?.requestFocus() } }
+        // ayarı telefona da bildir (telefondan gönderilen videolar aynı görünümü kullansın)
+        Hub.server?.send("SS " + listOf(st.subColor, st.subSize, st.subPos, st.subBg).joinToString(","))
+    }
+
+    /** Telefonun ok tuşlarını açık menüye / görünen kontrollere gerçek tuş gibi ilet. */
+    private fun key(code: Int) {
+        val d = dlg?.takeIf { it.isShowing }
+        val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code)
+        val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code)
+        if (d != null) { d.dispatchKeyEvent(down); d.dispatchKeyEvent(up) }
+        else { dispatchKeyEvent(down); dispatchKeyEvent(up) }
+    }
+
     /** Ayarlardaki altyazı rengi, boyutu, yüksekliği ve arka planı. */
     private fun applySubStyle() {
         val st = Store(this)
@@ -255,6 +321,19 @@ class PlayerActivity : Activity() {
     /** Telefon kumandasından gelen komutlar; true = burada işlendi. */
     private fun onRemote(line: String): Boolean {
         val p = player ?: return false
+        // menü açıksa ya da kontroller görünüyorsa ok tuşları onların arasında gezinsin
+        if (dlg?.isShowing == true || view.isControllerFullyVisible) {
+            val code = when (line) {
+                "K UP" -> android.view.KeyEvent.KEYCODE_DPAD_UP
+                "K DOWN" -> android.view.KeyEvent.KEYCODE_DPAD_DOWN
+                "K LEFT" -> android.view.KeyEvent.KEYCODE_DPAD_LEFT
+                "K RIGHT" -> android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+                "K CENTER", "K ENTER" -> android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                else -> 0
+            }
+            if (code != 0) { key(code); view.showController(); return true }
+            if (line == "K BACK" && dlg?.isShowing == true) { dlg?.dismiss(); return true }
+        }
         when (line) {
             "C", "K CENTER", "K ENTER" -> { if (p.isPlaying) p.pause() else p.play(); view.showController() }
             "K LEFT" -> { p.seekTo((p.currentPosition - 10_000).coerceAtLeast(0)); view.showController() }
