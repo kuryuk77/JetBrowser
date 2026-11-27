@@ -343,9 +343,6 @@ class PlayerActivity : Activity() {
             note("Kalite: " + o.label.substringBefore("  "))
         }
     }
-            .setNegativeButton("Kapat", null)
-            .show()
-    }
 
     /** Telefon touchpad'i: oynatıcıda imleç ve dokunma. */
     private fun touch(action: Int) {
