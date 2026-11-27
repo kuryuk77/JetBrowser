@@ -282,6 +282,8 @@ object Hub {
 
     /** TV kendi sürümünün (normal ya da tam) en yenisini indirir ve kurulum ekranını açar. */
     @Volatile private var updating = false
+    /** Arka planda açılamayan kurulum onay penceresi. */
+    @Volatile var pendingConfirm: Intent? = null
 
     private fun toastTv(msg: String) {
         val a = app ?: return

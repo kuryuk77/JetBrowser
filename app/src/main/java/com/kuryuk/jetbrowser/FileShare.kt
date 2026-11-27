@@ -106,11 +106,13 @@ class InstallReceiver : android.content.BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT) ?: return
                 confirm.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                // açılamazsa sakla; JetBrowser öne gelince gösterilir
+                Hub.pendingConfirm = confirm
                 val c: android.content.Context = JetAccess.instance ?: ctx
-                try { c.startActivity(confirm) } catch (_: Exception) { }
-                Hub.server?.send("N TV'de onay penceresi açıldı (bu bir kereye mahsus olmalı)")
+                try { c.startActivity(confirm); Hub.pendingConfirm = null } catch (_: Exception) { Hub.launch() }
+                Hub.server?.send("N TV'de onay penceresi açılıyor (bu bir kereye mahsus olmalı)")
             }
-            android.content.pm.PackageInstaller.STATUS_SUCCESS -> { }
+            android.content.pm.PackageInstaller.STATUS_SUCCESS -> { Hub.pendingConfirm = null }
             else -> {
                 val msg = intent.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE) ?: ""
                 Hub.server?.send("N Güncelleme kurulamadı $msg")

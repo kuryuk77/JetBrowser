@@ -215,6 +215,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         Hub.foreground = true
+        Hub.pendingConfirm?.let { c -> Hub.pendingConfirm = null; try { startActivity(c) } catch (_: Exception) { } }
         val f = pendingApk
         if (f != null && (Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls())) {
             pendingApk = null
