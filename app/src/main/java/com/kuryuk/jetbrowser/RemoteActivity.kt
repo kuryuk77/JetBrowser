@@ -171,6 +171,24 @@ class RemoteActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
         top.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
+        // telefondaki tarayıcıya geri dön (tarayıcıdaki sarı "Kumanda" tuşunun karşılığı)
+        top.addView(TextView(this).apply {
+            text = "Tarayıcı"
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFF1B1C1F.toInt())
+            gravity = Gravity.CENTER
+            setPadding(dp(18), dp(8), dp(18), dp(8))
+            setBackgroundResource(R.drawable.tile_primary)
+            setCompoundDrawablesRelativeWithIntrinsicBounds(
+                getDrawable(R.drawable.ic_globe)?.apply { setTint(0xFF1B1C1F.toInt()); setBounds(0, 0, dp(18), dp(18)) }, null, null, null)
+            compoundDrawablePadding = dp(8)
+            isClickable = true
+            setOnClickListener {
+                buzz()
+                startActivity(Intent(this@RemoteActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+        }, LinearLayout.LayoutParams(-2, dp(42)).apply { leftMargin = dp(8) })
         root.addView(top, LinearLayout.LayoutParams(-1, -2))
 
         val row0 = LinearLayout(this)
