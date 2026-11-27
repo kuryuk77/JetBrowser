@@ -303,8 +303,12 @@ object Hub {
                 updating = false
                 if (done == null) { server?.send("N TV güncellemeyi indiremedi"); toastTv("Güncelleme indirilemedi"); return@post }
                 server?.send("N İndirildi. TV'de \"Yükle\"ye basın")
-                // kurulum ekranını doğrudan aç; izin yoksa JetBrowser'a bırak (o izni sorar)
+                // önce sessiz kurulum (Android 12+); olmazsa kurulum ekranını aç; izin yoksa JetBrowser'a bırak
                 val canInstall = Build.VERSION.SDK_INT < 26 || a.packageManager.canRequestPackageInstalls()
+                if (canInstall && SelfInstall.install(a, done)) {
+                    server?.send("N Kuruluyor… JetBrowser birazdan kendini yeniden açacak")
+                    return@post
+                }
                 @Suppress("DEPRECATION")
                 val direct = canInstall && startFromAnywhere(Intent(Intent.ACTION_INSTALL_PACKAGE)
                     .setDataAndType(FileShare.uri(a, done), FileShare.mime(done.name))

@@ -68,3 +68,53 @@ class FileShare : ContentProvider() {
         }
     }
 }
+
+/**
+ * JetBrowser'ın kendi güncellemesini Android'in kurulum oturumuyla yapar.
+ * Android 12+ ve JetBrowser kendisini daha önce bu yolla kurduysa onay penceresi çıkmaz.
+ * Yoksa Android onay penceresini açar (InstallReceiver bunu gösterir).
+ */
+object SelfInstall {
+    fun install(ctx: android.content.Context, apk: java.io.File): Boolean = try {
+        val pi = ctx.packageManager.packageInstaller
+        val params = android.content.pm.PackageInstaller.SessionParams(
+            android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        params.setAppPackageName(ctx.packageName)
+        if (android.os.Build.VERSION.SDK_INT >= 31)
+            params.setRequireUserAction(android.content.pm.PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+        val id = pi.createSession(params)
+        pi.openSession(id).use { s ->
+            s.openWrite("base.apk", 0, apk.length()).use { out ->
+                apk.inputStream().use { it.copyTo(out) }
+                s.fsync(out)
+            }
+            val flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+                (if (android.os.Build.VERSION.SDK_INT >= 31) android.app.PendingIntent.FLAG_MUTABLE else 0)
+            val pending = android.app.PendingIntent.getBroadcast(ctx, id,
+                android.content.Intent(ctx, InstallReceiver::class.java), flags)
+            s.commit(pending.intentSender)
+        }
+        true
+    } catch (_: Exception) { false }
+}
+
+class InstallReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(ctx: android.content.Context, intent: android.content.Intent) {
+        val status = intent.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, -999)
+        when (status) {
+            android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                @Suppress("DEPRECATION")
+                val confirm = intent.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT) ?: return
+                confirm.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                val c: android.content.Context = JetAccess.instance ?: ctx
+                try { c.startActivity(confirm) } catch (_: Exception) { }
+                Hub.server?.send("N TV'de onay penceresi açıldı (bu bir kereye mahsus olmalı)")
+            }
+            android.content.pm.PackageInstaller.STATUS_SUCCESS -> { }
+            else -> {
+                val msg = intent.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE) ?: ""
+                Hub.server?.send("N Güncelleme kurulamadı $msg")
+            }
+        }
+    }
+}
