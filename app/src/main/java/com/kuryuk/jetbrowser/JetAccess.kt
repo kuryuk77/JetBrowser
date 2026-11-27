@@ -60,6 +60,10 @@ class JetAccess : AccessibilityService() {
         packageManager.getLeanbackLaunchIntentForPackage(p) ?: packageManager.getLaunchIntentForPackage(p)
 
     fun open(p: String): Boolean {
+        // kendi uygulamamızda video oynuyorsa tarayıcıya değil oynatıcıya dön
+        if (p == packageName) Hub.ownIntent(this)?.let { i ->
+            return try { startActivity(i); true } catch (_: Exception) { false }
+        }
         val i = launchIntent(p) ?: return false
         return try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true } catch (_: Exception) { false }
     }

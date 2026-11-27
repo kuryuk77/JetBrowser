@@ -225,7 +225,17 @@ object Hub {
         catch (_: Exception) { server?.send("N Açılamadı"); false }
     }
 
+    /** JetBrowser'a dönerken: oynatıcı açıksa onu öne getir (tarayıcıyı açmak oynatıcıyı kapatırdı). */
+    fun ownIntent(ctx: Context): Intent? {
+        val pl = PlayerActivity.instance
+        return if (pl != null && !pl.isFinishing)
+            Intent(ctx, PlayerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        else null
+    }
+
     private fun openApp(p: String) {
+        val a0 = app ?: return
+        if (p == a0.packageName) ownIntent(a0)?.let { startFromAnywhere(it); return }
         val pm = app?.packageManager ?: return
         val i = pm.getLeanbackLaunchIntentForPackage(p) ?: pm.getLaunchIntentForPackage(p)
         if (i == null) server?.send("N Açılamadı") else startFromAnywhere(i)
