@@ -1,0 +1,10 @@
+#Fri Nov 27 18:14:44 UTC 2026
+base.2=/home/runner/work/JetBrowser/JetBrowser/app/build/intermediates/dex/liteRelease/mergeDexLiteRelease/classes2.dex
+path.2=classes2.dex
+base.1=/home/runner/work/JetBrowser/JetBrowser/app/build/intermediates/global_synthetics_dex/liteRelease/mergeLiteReleaseGlobalSynthetics/classes.dex
+path.1=classes.dex
+base.0=/home/runner/work/JetBrowser/JetBrowser/app/build/intermediates/dex/liteRelease/mergeDexLiteRelease/classes.dex
+renamed.2=classes3.dex
+renamed.1=classes2.dex
+renamed.0=classes.dex
+path.0=classes.dex

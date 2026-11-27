@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#FFEBC04F</color>
+    <color name="bar">#FF1A1B1E</color>
+    <color name="bg">#FF1A1B1E</color>
+    <color name="icon_bg">#FF23262A</color>
+    <color name="tile">#26FFFFFF</color>
+    <string name="access_desc">Telefondaki Jet Kumanda ile TV\'yi yönetmek için: touchpad imleci, ok tuşları, klavyeyle yazma, uygulamalar arasında geçiş, giriş değiştirme, ana ekran, geri, TV\'yi uyutma ve JetBrowser\'ı uzaktan açma. Ok tuşları ve yazma için ekrandaki odaklı öğeye erişir; hiçbir veri kaydedilmez ya da cihaz dışına gönderilmez.</string>
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/app_bg</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:colorPrimary">@color/bar</item>
+        <item name="android:colorPrimaryDark">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+</resources>

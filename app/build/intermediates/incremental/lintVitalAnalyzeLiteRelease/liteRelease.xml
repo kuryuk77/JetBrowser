@@ -1,0 +1,31 @@
+<variant
+    name="liteRelease"
+    package="com.kuryuk.jetbrowser"
+    minSdkVersion="23"
+    targetSdkVersion="34"
+    mergedManifest="build/intermediates/merged_manifest/liteRelease/processLiteReleaseMainManifest/AndroidManifest.xml"
+    proguardFiles="build/intermediates/default_proguard_files/global/proguard-android.txt-8.5.2"
+    partialResultsDir="build/intermediates/lint_vital_partial_results/liteRelease/lintVitalAnalyzeLiteRelease/out"
+    desugaredMethodsFiles="/home/runner/.gradle/caches/transforms-4/464b18d790de16efd1bac404100a4564/transformed/D8BackportedDesugaredMethods.txt">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+    <sourceProvider
+        manifests="src/main/AndroidManifest.xml"
+        javaDirectories="src/main/java:src/lite/java:src/release/java:src/liteRelease/java:src/main/kotlin:src/lite/kotlin:src/release/kotlin:src/liteRelease/kotlin"
+        resDirectories="src/main/res:src/lite/res:src/release/res:src/liteRelease/res"
+        assetsDirectories="src/main/assets:src/lite/assets:src/release/assets:src/liteRelease/assets"/>
+  </sourceProviders>
+  <testSourceProviders>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <artifact
+      classOutputs="build/intermediates/javac/liteRelease/compileLiteReleaseJavaWithJavac/classes:build/tmp/kotlin-classes/liteRelease:build/kotlinToolingMetadata:build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/liteRelease/processLiteReleaseResources/R.jar"
+      type="MAIN"
+      applicationId="com.kuryuk.jetbrowser"
+      generatedSourceFolders="build/generated/ap_generated_sources/liteRelease/out"
+      generatedResourceFolders="build/generated/res/resValues/lite/release"
+      desugaredMethodsFiles="/home/runner/.gradle/caches/transforms-4/464b18d790de16efd1bac404100a4564/transformed/D8BackportedDesugaredMethods.txt">
+  </artifact>
+</variant>

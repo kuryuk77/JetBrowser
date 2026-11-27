@@ -1,0 +1,198 @@
+[
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-mdpi_ic_remote.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-mdpi/ic_remote.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_star.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_star.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_mouse.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_mouse.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_banner.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/banner.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable-nodpi_banner_img.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable-nodpi/banner_img.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable-nodpi_ic_launcher_fg.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable-nodpi/ic_launcher_fg.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_download.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_download.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable-nodpi_logo_browser.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable-nodpi/logo_browser.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_mic.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_mic.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_round_bg.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/round_bg.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-xhdpi_ic_remote.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-xhdpi/ic_remote.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_tile_primary.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/tile_primary.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-anydpi-v26_ic_remote.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-anydpi-v26/ic_remote.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_search.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_search.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_play.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_play.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_incognito.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_incognito.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_jet.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_jet.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/xml_access.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/xml/access.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_tune.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_tune.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_refresh.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_refresh.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_forward.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_forward.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_share.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_share.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_app_bg.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/app_bg.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_tabs.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_tabs.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_add.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_add.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_home.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_home.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-xxxhdpi_ic_remote.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-xxxhdpi/ic_remote.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_delete.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_delete.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_bookmark_add.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_bookmark_add.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_back.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_back.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_history.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_history.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_desktop.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_desktop.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable-nodpi_logo_remote.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable-nodpi/logo_remote.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-xxhdpi_ic_remote.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-xxhdpi/ic_remote.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_exit.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_exit.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_tile_bg.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/tile_bg.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_more.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_more.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-hdpi_ic_remote.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-hdpi/ic_remote.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_tv.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_tv.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_round_primary.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/round_primary.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable-nodpi_ic_remote_fg.png.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable-nodpi/ic_remote_fg.png"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_globe.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_globe.xml"
+    },
+    {
+        "merged": "com.kuryuk.jetbrowser.app-liteRelease-14:/drawable_ic_settings.xml.flat",
+        "source": "com.kuryuk.jetbrowser.app-main-17:/drawable/ic_settings.xml"
+    }
+]

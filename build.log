@@ -1,0 +1,124 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :app:buildKotlinToolingMetadata
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preFullReleaseBuild UP-TO-DATE
+> Task :app:generateFullReleaseResValues
+> Task :app:checkFullReleaseAarMetadata
+> Task :app:mapFullReleaseSourceSetPaths
+> Task :app:generateFullReleaseResources
+> Task :app:packageFullReleaseResources
+> Task :app:createFullReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksFullRelease
+> Task :app:parseFullReleaseLocalResources
+> Task :app:processFullReleaseMainManifest
+> Task :app:processFullReleaseManifest
+> Task :app:extractProguardFiles
+> Task :app:javaPreCompileFullRelease
+> Task :app:mergeFullReleaseJniLibFolders
+> Task :app:mergeFullReleaseNativeLibs NO-SOURCE
+> Task :app:processFullReleaseManifestForPackage
+> Task :app:stripFullReleaseDebugSymbols NO-SOURCE
+> Task :app:extractFullReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeFullReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:checkFullReleaseDuplicateClasses
+> Task :app:desugarFullReleaseFileDependencies
+> Task :app:mergeFullReleaseStartupProfile
+> Task :app:mergeFullReleaseResources
+> Task :app:mergeFullReleaseShaders
+> Task :app:mergeFullReleaseArtProfile
+> Task :app:compileFullReleaseShaders NO-SOURCE
+> Task :app:generateFullReleaseAssets UP-TO-DATE
+> Task :app:mergeFullReleaseAssets
+> Task :app:compressFullReleaseAssets
+> Task :app:extractFullReleaseVersionControlInfo
+> Task :app:collectFullReleaseDependencies
+> Task :app:processFullReleaseResources
+> Task :app:sdkFullReleaseDependencyData
+> Task :app:validateSigningFullRelease
+> Task :app:writeFullReleaseAppMetadata
+> Task :app:writeFullReleaseSigningConfigVersions
+> Task :app:preLiteReleaseBuild UP-TO-DATE
+> Task :app:checkLiteReleaseAarMetadata
+> Task :app:optimizeFullReleaseResources
+> Task :app:generateLiteReleaseResValues
+> Task :app:mapLiteReleaseSourceSetPaths
+> Task :app:generateLiteReleaseResources
+> Task :app:packageLiteReleaseResources
+> Task :app:mergeExtDexFullRelease
+> Task :app:createLiteReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksLiteRelease
+> Task :app:parseLiteReleaseLocalResources
+> Task :app:mergeLiteReleaseResources
+> Task :app:processLiteReleaseMainManifest
+> Task :app:processLiteReleaseManifest
+> Task :app:processLiteReleaseManifestForPackage
+> Task :app:javaPreCompileLiteRelease
+> Task :app:mergeLiteReleaseJniLibFolders
+> Task :app:mergeLiteReleaseNativeLibs NO-SOURCE
+> Task :app:stripLiteReleaseDebugSymbols NO-SOURCE
+> Task :app:extractLiteReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeLiteReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:desugarLiteReleaseFileDependencies
+> Task :app:mergeLiteReleaseStartupProfile
+> Task :app:checkLiteReleaseDuplicateClasses
+> Task :app:mergeLiteReleaseArtProfile
+> Task :app:processLiteReleaseResources
+> Task :app:mergeLiteReleaseShaders
+> Task :app:compileLiteReleaseShaders NO-SOURCE
+> Task :app:generateLiteReleaseAssets UP-TO-DATE
+> Task :app:mergeLiteReleaseAssets
+> Task :app:compressLiteReleaseAssets
+> Task :app:extractLiteReleaseVersionControlInfo
+> Task :app:mergeExtDexLiteRelease
+> Task :app:collectLiteReleaseDependencies
+> Task :app:sdkLiteReleaseDependencyData
+> Task :app:optimizeLiteReleaseResources
+> Task :app:validateSigningLiteRelease
+> Task :app:writeLiteReleaseAppMetadata
+> Task :app:writeLiteReleaseSigningConfigVersions
+> Task :app:compileFullReleaseKotlin
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/JetAccess.kt:153:13 Variable 'v' is never used
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/MainActivity.kt:1281:74 The value 'from' assigned to 'var s: Int defined in com.kuryuk.jetbrowser.MainActivity.typeInto' is never used
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/PlayerActivity.kt:149:44 Destructured parameter 's' is never used
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/RemoteActivity.kt:444:38 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+
+> Task :app:compileLiteReleaseKotlin
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/JetAccess.kt:153:13 Variable 'v' is never used
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/MainActivity.kt:1281:74 The value 'from' assigned to 'var s: Int defined in com.kuryuk.jetbrowser.MainActivity.typeInto' is never used
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/PlayerActivity.kt:149:44 Destructured parameter 's' is never used
+w: file:///home/runner/work/JetBrowser/JetBrowser/app/src/main/java/com/kuryuk/jetbrowser/RemoteActivity.kt:444:38 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+
+> Task :app:compileLiteReleaseJavaWithJavac NO-SOURCE
+> Task :app:compileFullReleaseJavaWithJavac NO-SOURCE
+> Task :app:generateFullReleaseLintVitalReportModel
+> Task :app:dexBuilderFullRelease
+> Task :app:mergeFullReleaseGlobalSynthetics
+> Task :app:processFullReleaseJavaRes
+> Task :app:generateLiteReleaseLintVitalReportModel
+> Task :app:mergeFullReleaseJavaResource
+> Task :app:mergeDexFullRelease
+> Task :app:dexBuilderLiteRelease
+> Task :app:compileFullReleaseArtProfile
+> Task :app:mergeDexLiteRelease
+> Task :app:mergeLiteReleaseGlobalSynthetics
+> Task :app:compileLiteReleaseArtProfile
+> Task :app:processLiteReleaseJavaRes
+> Task :app:mergeLiteReleaseJavaResource
+> Task :app:packageFullRelease
+> Task :app:createFullReleaseApkListingFileRedirect
+> Task :app:packageLiteRelease
+> Task :app:createLiteReleaseApkListingFileRedirect
+> Task :app:lintVitalAnalyzeFullRelease
+> Task :app:lintVitalAnalyzeLiteRelease
+> Task :app:lintVitalReportLiteRelease
+> Task :app:lintVitalLiteRelease
+> Task :app:assembleLiteRelease
+> Task :app:lintVitalReportFullRelease
+> Task :app:lintVitalFullRelease
+> Task :app:assembleFullRelease
+> Task :app:assembleRelease
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795803230581.json
+
+BUILD SUCCESSFUL in 1m 12s
+89 actionable tasks: 89 executed

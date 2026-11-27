@@ -1,0 +1,407 @@
+-- Merging decision tree log ---
+provider#com.kuryuk.jetbrowser.FileShare
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:122:9-126:50
+	android:authorities
+		INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml
+manifest
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:2:1-128:12
+MERGED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:2:1-128:12
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:2:1-15:12
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:2:1-15:12
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:2:1-15:12
+MERGED from [androidx.media3:media3-exoplayer-hls:1.4.1] /home/runner/.gradle/caches/transforms-4/cc9d921309a45afdc89a7fa23f976b53/transformed/media3-exoplayer-hls-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-exoplayer-dash:1.4.1] /home/runner/.gradle/caches/transforms-4/c4c9745ab9a4a908ab98e57948b81a11/transformed/media3-exoplayer-dash-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-exoplayer:1.4.1] /home/runner/.gradle/caches/transforms-4/95bfd944e3a9b023aacdd5e69eb36501/transformed/media3-exoplayer-1.4.1/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.media3:media3-ui:1.4.1] /home/runner/.gradle/caches/transforms-4/663fe680b59799d4cb88142368e025f9/transformed/media3-ui-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-extractor:1.4.1] /home/runner/.gradle/caches/transforms-4/6d05d9cbc18f5fb346b15b1752bb4721/transformed/media3-extractor-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-container:1.4.1] /home/runner/.gradle/caches/transforms-4/84cd70075afcf10dfa028a0d40a3af0d/transformed/media3-container-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-datasource:1.4.1] /home/runner/.gradle/caches/transforms-4/e0090e28d74e9906c587569dd21133c0/transformed/media3-datasource-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-decoder:1.4.1] /home/runner/.gradle/caches/transforms-4/52430b145a30cd74326f290d0f58deef/transformed/media3-decoder-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-database:1.4.1] /home/runner/.gradle/caches/transforms-4/8267f547c501f34a5c7b2c77f549049b/transformed/media3-database-1.4.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-common:1.4.1] /home/runner/.gradle/caches/transforms-4/406640f12b02cbf1a2b0cb410da91922/transformed/media3-common-1.4.1/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.webkit:webkit:1.11.0] /home/runner/.gradle/caches/transforms-4/d8db77e65e80d5eeb36f5ad93190773b/transformed/webkit-1.11.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.media:media:1.7.0] /home/runner/.gradle/caches/transforms-4/af4a4501f4720d1eb4a0cb4841bced2d/transformed/media-1.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.recyclerview:recyclerview:1.3.0] /home/runner/.gradle/caches/transforms-4/8f0e32556abe4536e3df32e0fc73c8cd/transformed/recyclerview-1.3.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.customview:customview:1.0.0] /home/runner/.gradle/caches/transforms-4/f3fda6a219a531beb4042fe3d2b5996e/transformed/customview-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] /home/runner/.gradle/caches/transforms-4/ca320cc04769201d96ae35a18d4b1c24/transformed/customview-poolingcontainer-1.0.0/AndroidManifest.xml:17:1-23:12
+MERGED from [androidx.core:core-ktx:1.9.0] /home/runner/.gradle/caches/transforms-4/9794581c237e9da38a50ee7a4e5f4853/transformed/core-ktx-1.9.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:17:1-30:12
+MERGED from [androidx.annotation:annotation-experimental:1.3.1] /home/runner/.gradle/caches/transforms-4/1a9e19123d90248a21bb810faa2b080d/transformed/annotation-experimental-1.3.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-4/e76f1b767bbdaf61093fe6fdbd88b122/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] /home/runner/.gradle/caches/transforms-4/59c877403c46b4271c5aa69530744fe2/transformed/exifinterface-1.3.6/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.1] /home/runner/.gradle/caches/transforms-4/1a144c5cb804b0367eaa3e9d66279395/transformed/lifecycle-runtime-2.3.1/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.arch.core:core-runtime:2.1.0] /home/runner/.gradle/caches/transforms-4/1ce19add42185f13a2cf924a10cca39f/transformed/core-runtime-2.1.0/AndroidManifest.xml:17:1-24:12
+	package
+		INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+	android:versionName
+		INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+	xmlns:tools
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:3:5-51
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:3:5-51
+	android:versionCode
+		INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+	xmlns:android
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:2:11-69
+uses-permission#android.permission.INTERNET
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:5:5-67
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:5:22-64
+uses-permission#android.permission.ACCESS_NETWORK_STATE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:6:5-79
+MERGED from [androidx.media3:media3-exoplayer:1.4.1] /home/runner/.gradle/caches/transforms-4/95bfd944e3a9b023aacdd5e69eb36501/transformed/media3-exoplayer-1.4.1/AndroidManifest.xml:22:5-79
+MERGED from [androidx.media3:media3-exoplayer:1.4.1] /home/runner/.gradle/caches/transforms-4/95bfd944e3a9b023aacdd5e69eb36501/transformed/media3-exoplayer-1.4.1/AndroidManifest.xml:22:5-79
+MERGED from [androidx.media3:media3-common:1.4.1] /home/runner/.gradle/caches/transforms-4/406640f12b02cbf1a2b0cb410da91922/transformed/media3-common-1.4.1/AndroidManifest.xml:22:5-79
+MERGED from [androidx.media3:media3-common:1.4.1] /home/runner/.gradle/caches/transforms-4/406640f12b02cbf1a2b0cb410da91922/transformed/media3-common-1.4.1/AndroidManifest.xml:22:5-79
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:6:22-76
+uses-permission#android.permission.ACCESS_WIFI_STATE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:7:5-76
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:7:22-73
+uses-permission#android.permission.CHANGE_WIFI_MULTICAST_STATE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:8:5-86
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:8:22-83
+uses-permission#android.permission.VIBRATE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:9:5-66
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:9:22-63
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:10:5-77
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:10:22-74
+uses-permission#android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:11:5-89
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:11:22-86
+uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:12:5-81
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:12:22-78
+uses-permission#android.permission.WAKE_LOCK
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:13:5-68
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:13:22-65
+uses-permission#android.permission.SYSTEM_ALERT_WINDOW
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:14:5-78
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:14:22-75
+uses-permission#android.permission.PACKAGE_USAGE_STATS
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:15:5-114
+	tools:ignore
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:15:76-111
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:15:22-75
+uses-permission#android.permission.REQUEST_INSTALL_PACKAGES
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:16:5-83
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:16:22-80
+uses-permission#android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:17:5-94
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:17:22-91
+uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:18:5-108
+	android:maxSdkVersion
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:18:79-105
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:18:22-78
+uses-feature#android.software.leanback
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:20:5-87
+	android:required
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:20:60-84
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:20:19-59
+uses-feature#android.hardware.touchscreen
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:21:5-90
+	android:required
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:21:63-87
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:21:19-62
+uses-feature#android.hardware.microphone
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:22:5-89
+	android:required
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:22:62-86
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:22:19-61
+queries
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:24:5-40:15
+intent#action:name:android.speech.action.RECOGNIZE_SPEECH
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:25:9-27:18
+action#android.speech.action.RECOGNIZE_SPEECH
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:26:13-77
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:26:21-74
+intent#action:name:android.intent.action.MAIN+category:name:android.intent.category.LEANBACK_LAUNCHER
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:28:9-31:18
+action#android.intent.action.MAIN
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:29:13-65
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:29:21-62
+category#android.intent.category.LEANBACK_LAUNCHER
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:30:13-82
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:30:23-79
+intent#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:32:9-35:18
+category#android.intent.category.LAUNCHER
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:34:13-73
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:34:23-70
+intent#action:name:android.intent.action.MAIN+category:name:android.intent.category.HOME
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:36:9-39:18
+category#android.intent.category.HOME
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:38:13-69
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:38:23-66
+application
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:42:5-127:19
+MERGED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:42:5-127:19
+MERGED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:42:5-127:19
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:3:5-14:19
+MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:28:5-89
+MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:28:5-89
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-4/e76f1b767bbdaf61093fe6fdbd88b122/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-4/e76f1b767bbdaf61093fe6fdbd88b122/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
+	android:extractNativeLibs
+		INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+	android:appComponentFactory
+		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
+	android:supportsRtl
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:48:9-35
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:48:9-35
+	android:label
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:47:9-35
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:47:9-35
+	android:hardwareAccelerated
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:45:9-43
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:45:9-43
+	android:icon
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:46:9-43
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:46:9-43
+	android:allowBackup
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:43:9-35
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:43:9-35
+	android:banner
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:44:9-42
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:44:9-42
+	android:theme
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:49:9-40
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:49:9-40
+	android:usesCleartextTraffic
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:50:9-44
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:50:9-44
+activity#com.kuryuk.jetbrowser.MainActivity
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:52:9-74:20
+	android:launchMode
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:56:13-44
+	android:windowSoftInputMode
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:57:13-55
+	android:exported
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:55:13-36
+	android:configChanges
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:54:13-133
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:53:13-41
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER+category:name:android.intent.category.LEANBACK_LAUNCHER
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:58:13-62:29
+intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:scheme:http+data:scheme:https
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:63:13-69:29
+action#android.intent.action.VIEW
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:64:17-69
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:64:25-66
+category#android.intent.category.DEFAULT
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:65:17-76
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:65:27-73
+category#android.intent.category.BROWSABLE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:66:17-78
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:66:27-75
+data
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:67:17-47
+	android:scheme
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:67:23-44
+intent-filter#action:name:android.intent.action.WEB_SEARCH+category:name:android.intent.category.DEFAULT
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:70:13-73:29
+action#android.intent.action.WEB_SEARCH
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:71:17-75
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:71:25-72
+activity#com.kuryuk.jetbrowser.RemoteActivity
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:76:9-94:20
+	android:label
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:80:13-40
+	android:launchMode
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:81:13-44
+	android:windowSoftInputMode
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:83:13-55
+	android:exported
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:78:13-36
+	android:icon
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:79:13-45
+	android:taskAffinity
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:82:13-64
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:77:13-43
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:84:13-87:29
+intent-filter#action:name:android.intent.action.SEND+action:name:android.intent.action.SEND_MULTIPLE+category:name:android.intent.category.DEFAULT+data:mimeType:*/*
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:88:13-93:29
+	android:label
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:88:28-56
+action#android.intent.action.SEND
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:89:17-69
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:89:25-66
+action#android.intent.action.SEND_MULTIPLE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:90:17-78
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:90:25-75
+service#com.kuryuk.jetbrowser.JetService
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:96:9-103:19
+	android:exported
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:98:13-37
+	android:foregroundServiceType
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:99:13-55
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:97:13-39
+property#android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:100:13-102:79
+	android:value
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:102:17-76
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:101:17-76
+receiver#com.kuryuk.jetbrowser.BootReceiver
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:105:9-111:20
+	android:exported
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:105:48-71
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:105:19-47
+intent-filter#action:name:android.intent.action.BOOT_COMPLETED+action:name:android.intent.action.MY_PACKAGE_REPLACED+action:name:android.intent.action.QUICKBOOT_POWERON
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:106:13-110:29
+action#android.intent.action.BOOT_COMPLETED
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:107:17-79
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:107:25-76
+action#android.intent.action.QUICKBOOT_POWERON
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:108:17-82
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:108:25-79
+action#android.intent.action.MY_PACKAGE_REPLACED
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:109:17-84
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:109:25-81
+activity#com.kuryuk.jetbrowser.PlayerActivity
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:113:9-118:80
+	android:launchMode
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:117:13-44
+	android:exported
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:116:13-37
+	android:configChanges
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:115:13-133
+	android:theme
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:118:13-77
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:114:13-43
+receiver#com.kuryuk.jetbrowser.InstallReceiver
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:120:9-78
+	android:exported
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:120:51-75
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/main/AndroidManifest.xml:120:19-50
+service#com.kuryuk.jetbrowser.JetAccess
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:4:9-13:19
+	android:label
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:7:13-39
+	android:exported
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:6:13-36
+	android:permission
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:8:13-79
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:5:13-38
+intent-filter#action:name:android.accessibilityservice.AccessibilityService
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:9:13-11:29
+action#android.accessibilityservice.AccessibilityService
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:10:17-92
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:10:25-89
+meta-data#android.accessibilityservice
+ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:12:13-101
+	android:resource
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:12:68-98
+	android:name
+		ADDED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml:12:24-67
+uses-sdk
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+MERGED from [androidx.media3:media3-exoplayer-hls:1.4.1] /home/runner/.gradle/caches/transforms-4/cc9d921309a45afdc89a7fa23f976b53/transformed/media3-exoplayer-hls-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-exoplayer-hls:1.4.1] /home/runner/.gradle/caches/transforms-4/cc9d921309a45afdc89a7fa23f976b53/transformed/media3-exoplayer-hls-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-exoplayer-dash:1.4.1] /home/runner/.gradle/caches/transforms-4/c4c9745ab9a4a908ab98e57948b81a11/transformed/media3-exoplayer-dash-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-exoplayer-dash:1.4.1] /home/runner/.gradle/caches/transforms-4/c4c9745ab9a4a908ab98e57948b81a11/transformed/media3-exoplayer-dash-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-exoplayer:1.4.1] /home/runner/.gradle/caches/transforms-4/95bfd944e3a9b023aacdd5e69eb36501/transformed/media3-exoplayer-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-exoplayer:1.4.1] /home/runner/.gradle/caches/transforms-4/95bfd944e3a9b023aacdd5e69eb36501/transformed/media3-exoplayer-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-ui:1.4.1] /home/runner/.gradle/caches/transforms-4/663fe680b59799d4cb88142368e025f9/transformed/media3-ui-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-ui:1.4.1] /home/runner/.gradle/caches/transforms-4/663fe680b59799d4cb88142368e025f9/transformed/media3-ui-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-extractor:1.4.1] /home/runner/.gradle/caches/transforms-4/6d05d9cbc18f5fb346b15b1752bb4721/transformed/media3-extractor-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-extractor:1.4.1] /home/runner/.gradle/caches/transforms-4/6d05d9cbc18f5fb346b15b1752bb4721/transformed/media3-extractor-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-container:1.4.1] /home/runner/.gradle/caches/transforms-4/84cd70075afcf10dfa028a0d40a3af0d/transformed/media3-container-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-container:1.4.1] /home/runner/.gradle/caches/transforms-4/84cd70075afcf10dfa028a0d40a3af0d/transformed/media3-container-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-datasource:1.4.1] /home/runner/.gradle/caches/transforms-4/e0090e28d74e9906c587569dd21133c0/transformed/media3-datasource-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-datasource:1.4.1] /home/runner/.gradle/caches/transforms-4/e0090e28d74e9906c587569dd21133c0/transformed/media3-datasource-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-decoder:1.4.1] /home/runner/.gradle/caches/transforms-4/52430b145a30cd74326f290d0f58deef/transformed/media3-decoder-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-decoder:1.4.1] /home/runner/.gradle/caches/transforms-4/52430b145a30cd74326f290d0f58deef/transformed/media3-decoder-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-database:1.4.1] /home/runner/.gradle/caches/transforms-4/8267f547c501f34a5c7b2c77f549049b/transformed/media3-database-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-database:1.4.1] /home/runner/.gradle/caches/transforms-4/8267f547c501f34a5c7b2c77f549049b/transformed/media3-database-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-common:1.4.1] /home/runner/.gradle/caches/transforms-4/406640f12b02cbf1a2b0cb410da91922/transformed/media3-common-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-common:1.4.1] /home/runner/.gradle/caches/transforms-4/406640f12b02cbf1a2b0cb410da91922/transformed/media3-common-1.4.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.webkit:webkit:1.11.0] /home/runner/.gradle/caches/transforms-4/d8db77e65e80d5eeb36f5ad93190773b/transformed/webkit-1.11.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.webkit:webkit:1.11.0] /home/runner/.gradle/caches/transforms-4/d8db77e65e80d5eeb36f5ad93190773b/transformed/webkit-1.11.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.media:media:1.7.0] /home/runner/.gradle/caches/transforms-4/af4a4501f4720d1eb4a0cb4841bced2d/transformed/media-1.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.media:media:1.7.0] /home/runner/.gradle/caches/transforms-4/af4a4501f4720d1eb4a0cb4841bced2d/transformed/media-1.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.recyclerview:recyclerview:1.3.0] /home/runner/.gradle/caches/transforms-4/8f0e32556abe4536e3df32e0fc73c8cd/transformed/recyclerview-1.3.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.recyclerview:recyclerview:1.3.0] /home/runner/.gradle/caches/transforms-4/8f0e32556abe4536e3df32e0fc73c8cd/transformed/recyclerview-1.3.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] /home/runner/.gradle/caches/transforms-4/f3fda6a219a531beb4042fe3d2b5996e/transformed/customview-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] /home/runner/.gradle/caches/transforms-4/f3fda6a219a531beb4042fe3d2b5996e/transformed/customview-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] /home/runner/.gradle/caches/transforms-4/ca320cc04769201d96ae35a18d4b1c24/transformed/customview-poolingcontainer-1.0.0/AndroidManifest.xml:20:5-21:38
+MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] /home/runner/.gradle/caches/transforms-4/ca320cc04769201d96ae35a18d4b1c24/transformed/customview-poolingcontainer-1.0.0/AndroidManifest.xml:20:5-21:38
+MERGED from [androidx.core:core-ktx:1.9.0] /home/runner/.gradle/caches/transforms-4/9794581c237e9da38a50ee7a4e5f4853/transformed/core-ktx-1.9.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-ktx:1.9.0] /home/runner/.gradle/caches/transforms-4/9794581c237e9da38a50ee7a4e5f4853/transformed/core-ktx-1.9.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.3.1] /home/runner/.gradle/caches/transforms-4/1a9e19123d90248a21bb810faa2b080d/transformed/annotation-experimental-1.3.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.3.1] /home/runner/.gradle/caches/transforms-4/1a9e19123d90248a21bb810faa2b080d/transformed/annotation-experimental-1.3.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-4/e76f1b767bbdaf61093fe6fdbd88b122/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-4/e76f1b767bbdaf61093fe6fdbd88b122/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] /home/runner/.gradle/caches/transforms-4/59c877403c46b4271c5aa69530744fe2/transformed/exifinterface-1.3.6/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] /home/runner/.gradle/caches/transforms-4/59c877403c46b4271c5aa69530744fe2/transformed/exifinterface-1.3.6/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.1] /home/runner/.gradle/caches/transforms-4/1a144c5cb804b0367eaa3e9d66279395/transformed/lifecycle-runtime-2.3.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.3.1] /home/runner/.gradle/caches/transforms-4/1a144c5cb804b0367eaa3e9d66279395/transformed/lifecycle-runtime-2.3.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.arch.core:core-runtime:2.1.0] /home/runner/.gradle/caches/transforms-4/1ce19add42185f13a2cf924a10cca39f/transformed/core-runtime-2.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.arch.core:core-runtime:2.1.0] /home/runner/.gradle/caches/transforms-4/1ce19add42185f13a2cf924a10cca39f/transformed/core-runtime-2.1.0/AndroidManifest.xml:20:5-22:41
+	android:targetSdkVersion
+		INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /home/runner/work/JetBrowser/JetBrowser/app/src/full/AndroidManifest.xml
+permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
+permission#com.kuryuk.jetbrowser.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
+uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
+uses-permission#com.kuryuk.jetbrowser.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/AndroidManifest.xml:26:22-94

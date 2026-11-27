@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.kuryuk.jetbrowser.app-mergeFullReleaseResources-12:/values-pt-rBR/values-pt-rBR.xml",
+            "map": [
+                {
+                    "source": "/home/runner/.gradle/caches/transforms-4/b064285c2cb39ec91b0eea11b6919cd5/transformed/core-1.9.0/res/values-pt-rBR/values-pt-rBR.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "100",
+                        "endOffsets": "151"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,31 @@
+<variant
+    name="fullRelease"
+    package="com.kuryuk.jetbrowser"
+    minSdkVersion="23"
+    targetSdkVersion="34"
+    mergedManifest="build/intermediates/merged_manifest/fullRelease/processFullReleaseMainManifest/AndroidManifest.xml"
+    manifestMergeReport="build/outputs/logs/manifest-merger-full-release-report.txt"
+    proguardFiles="build/intermediates/default_proguard_files/global/proguard-android.txt-8.5.2"
+    partialResultsDir="build/intermediates/lint_vital_partial_results/fullRelease/lintVitalAnalyzeFullRelease/out">
+  <buildFeatures
+      namespacing="REQUIRED"/>
+  <sourceProviders>
+    <sourceProvider
+        manifests="src/main/AndroidManifest.xml:src/full/AndroidManifest.xml"
+        javaDirectories="src/main/java:src/full/java:src/release/java:src/fullRelease/java:src/main/kotlin:src/full/kotlin:src/release/kotlin:src/fullRelease/kotlin"
+        resDirectories="src/main/res:src/full/res:src/release/res:src/fullRelease/res"
+        assetsDirectories="src/main/assets:src/full/assets:src/release/assets:src/fullRelease/assets"/>
+  </sourceProviders>
+  <testSourceProviders>
+  </testSourceProviders>
+  <testFixturesSourceProviders>
+  </testFixturesSourceProviders>
+  <artifact
+      classOutputs="build/intermediates/javac/fullRelease/compileFullReleaseJavaWithJavac/classes:build/tmp/kotlin-classes/fullRelease:build/kotlinToolingMetadata:build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/fullRelease/processFullReleaseResources/R.jar"
+      type="MAIN"
+      applicationId="com.kuryuk.jetbrowser"
+      generatedSourceFolders="build/generated/ap_generated_sources/fullRelease/out"
+      generatedResourceFolders="build/generated/res/resValues/full/release"
+      desugaredMethodsFiles="/home/runner/.gradle/caches/transforms-4/464b18d790de16efd1bac404100a4564/transformed/D8BackportedDesugaredMethods.txt">
+  </artifact>
+</variant>
