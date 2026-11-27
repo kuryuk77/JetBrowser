@@ -394,8 +394,16 @@ class JetService : Service() {
 }
 
 /** TV açılınca servisi başlatır. */
+/** TV açılınca ve JetBrowser güncellenince telefonu dinlemeye hemen yeniden başlar. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent?) {
-        if (Hub.isTv(ctx)) Hub.startService(ctx)
+        if (!Hub.isTv(ctx)) return
+        Hub.start(ctx)
+        Hub.startService(ctx)
+        if (intent?.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            // güncellemeden sonra "Aç"a basmaya gerek kalmasın: JetBrowser'ı kendisi açar
+            val h = android.os.Handler(android.os.Looper.getMainLooper())
+            for (t in longArrayOf(1500, 4000)) h.postDelayed({ if (!Hub.foreground) Hub.launch() }, t)
+        }
     }
 }
