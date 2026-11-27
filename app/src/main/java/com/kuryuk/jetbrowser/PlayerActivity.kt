@@ -53,7 +53,6 @@ class PlayerActivity : Activity() {
             setBackgroundColor(0xFF000000.toInt())
             setShowNextButton(false)
             setShowPreviousButton(false)
-            setShowSubtitleButton(true)
             keepScreenOn = true
         }
         cursor = CursorView(this).apply { visibility = View.GONE }
@@ -363,13 +362,23 @@ class PlayerActivity : Activity() {
     }
 
     /** CC tuşunun yanına "Aa" (altyazı görünümü) tuşu ekler. */
+    /**
+     * Oynatıcının kendi CC ve ⚙ tuşları ayrı bir açılır pencere kullanıyor; telefonun Geri'si ve dokunmaları
+     * oraya ulaşmıyor. Onları kaldırıp yerine oynatıcının içinde açılan kendi tuşlarımızı koyuyoruz:
+     * CC (altyazı seç), Aa (görünüm), HD (kalite), ⚙ (hız ve ses).
+     */
     private fun addStyleButton() {
         val bar = view.findViewById<android.view.ViewGroup>(androidx.media3.ui.R.id.exo_basic_controls) ?: return
         val cc = view.findViewById<View>(androidx.media3.ui.R.id.exo_subtitle)
+        val gear = view.findViewById<View>(androidx.media3.ui.R.id.exo_settings)
+        var at = if (cc != null) bar.indexOfChild(cc) else 0
+        if (at < 0) at = 0
+        (cc?.parent as? android.view.ViewGroup)?.removeView(cc)
+        (gear?.parent as? android.view.ViewGroup)?.removeView(gear)
         val d = resources.displayMetrics.density
-        val b = android.widget.TextView(this).apply {
-            text = "Aa"
-            textSize = 17f
+        fun btn(t: String, desc: String, size: Float, click: () -> Unit) = android.widget.TextView(this).apply {
+            text = t
+            textSize = size
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setTextColor(0xFFFFFFFF.toInt())
             gravity = android.view.Gravity.CENTER
@@ -381,25 +390,62 @@ class PlayerActivity : Activity() {
                 })
                 addState(intArrayOf(), android.graphics.drawable.ColorDrawable(0))
             }
-            contentDescription = "Altyazı görünümü"
-            setOnClickListener { styleDialog() }
+            contentDescription = desc
+            setOnClickListener { click() }
         }
-        val i = if (cc != null) bar.indexOfChild(cc) + 1 else 0
-        bar.addView(b, i, android.view.ViewGroup.LayoutParams((48 * d).toInt(), (48 * d).toInt()))
-        // kalite tuşu ("HD")
-        val q = android.widget.TextView(this).apply {
-            text = "HD"
-            textSize = 15f
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(0xFFFFFFFF.toInt())
-            gravity = android.view.Gravity.CENTER
-            isFocusable = true
-            isClickable = true
-            background = b.background.constantState?.newDrawable()
-            contentDescription = "Kalite"
-            setOnClickListener { qualityDialog() }
+        val list = listOf(
+            btn("CC", "Altyazı", 15f) { ccDialog() },
+            btn("Aa", "Altyazı görünümü", 17f) { styleDialog() },
+            btn("HD", "Kalite", 15f) { qualityDialog() },
+            btn("⚙", "Ayarlar", 20f) { settingsDialog() }
+        )
+        list.forEachIndexed { k, v -> bar.addView(v, (at + k).coerceAtMost(bar.childCount),
+            android.view.ViewGroup.LayoutParams((48 * d).toInt(), (48 * d).toInt())) }
+    }
+
+    /** Altyazı seçimi (Kapalı / Türkçe / İngilizce …). */
+    private fun ccDialog() {
+        val p = player ?: return
+        val groups = p.currentTracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
+        if (groups.isEmpty()) { note("Bu videoda altyazı yok"); return }
+        val textOff = p.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)
+        val labels = listOf((if (textOff) "✓  " else "") + "Kapalı") + groups.mapIndexed { k, g ->
+            val f = g.getTrackFormat(0)
+            (if (!textOff && g.isSelected) "✓  " else "") + (f.label ?: f.language ?: "Altyazı ${k + 1}")
         }
-        bar.addView(q, i + 1, android.view.ViewGroup.LayoutParams((48 * d).toInt(), (48 * d).toInt()))
+        showMenu("Altyazı", labels, 0, "Kapat") { w ->
+            val b = p.trackSelectionParameters.buildUpon()
+            if (w == 0) b.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            else b.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).setOverrideForType(TrackSelectionOverride(groups[w - 1].mediaTrackGroup, 0))
+            p.trackSelectionParameters = b.build()
+            closeMenu()
+        }
+    }
+
+    private val speeds = floatArrayOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+    /** ⚙: oynatma hızı ve ses (dil) seçimi. */
+    private fun settingsDialog() {
+        val p = player ?: return
+        val sp = p.playbackParameters.speed
+        val audio = p.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+        val curAudio = audio.firstOrNull { it.isSelected }?.getTrackFormat(0)
+        fun aname(f: androidx.media3.common.Format?, k: Int) = f?.label ?: f?.language?.let { java.util.Locale(it).getDisplayLanguage(java.util.Locale("tr")) } ?: "Ses ${k + 1}"
+        val rows = mutableListOf("Hız:  " + (if (sp == 1f) "Normal" else "${sp}x"))
+        if (audio.size > 1) rows.add("Ses:  " + aname(curAudio, 0))
+        showMenu("Ayarlar", rows, 0, "Kapat") { w ->
+            if (w == 0) {
+                showMenu("Oynatma hızı", speeds.map { (if (it == sp) "✓  " else "") + if (it == 1f) "Normal" else "${it}x" }, speeds.indexOfFirst { it == sp }.coerceAtLeast(0), "Kapat") { k ->
+                    p.setPlaybackSpeed(speeds[k]); closeMenu()
+                }
+            } else {
+                showMenu("Ses", audio.mapIndexed { k, g -> (if (g.isSelected) "✓  " else "") + aname(g.getTrackFormat(0), k) }, 0, "Kapat") { k ->
+                    p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+                        .setOverrideForType(TrackSelectionOverride(audio[k].mediaTrackGroup, 0)).build()
+                    closeMenu()
+                }
+            }
+        }
     }
 
     /** Altyazı rengi / boyutu / konumu / arka planı; seçince hemen uygulanır. */
