@@ -1860,28 +1860,36 @@ class MainActivity : Activity() {
     /** Son bağlanılan TV'ye tek satırlık komut gönderir. */
     private fun sendLine(line: String, okMsg: String) {
         val p = getSharedPreferences("remote", MODE_PRIVATE)
-        val host = p.getString("host", null)
-        if (host == null) {
-            toast("Önce Jet Kumanda ile TV'ye bir kez bağlanın")
-            startActivity(Intent(this, RemoteActivity::class.java))
-            return
-        }
-        val port = p.getInt("port", REMOTE_PORT)
+        var host = p.getString("host", null)
+        var port = p.getInt("port", REMOTE_PORT)
         toast("TV'ye gönderiliyor…")
         val mac = p.getString("mac", null)
         Thread {
-            // TV bekleme modundaysa: uyandır ve bağlanana kadar dene
             fun open(): java.net.Socket? = try {
-                java.net.Socket().apply { connect(java.net.InetSocketAddress(host, port), 3000) }
+                if (host == null) null
+                else java.net.Socket().apply { connect(java.net.InetSocketAddress(host, port), 3000) }
             } catch (_: Exception) { null }
+            // TV'nin adresi değişmiş olabilir: ağda ara, bulursa yeni adresi kaydet
+            fun rediscover(): Boolean {
+                val f = TvFinder.find(this, p.getString("name", null), 5000) ?: return false
+                host = f.first; port = f.second
+                p.edit().putString("host", f.first).putInt("port", f.second).putString("name", f.third).apply()
+                return true
+            }
             var sock = open()
+            if (sock == null && rediscover()) sock = open()
+            if (sock == null && host == null) {
+                runOnUiThread { toast("TV bulunamadı. TV'de JetBrowser açık ve aynı Wi-Fi'da mı?") }
+                return@Thread
+            }
+            // TV bekleme modundaysa: uyandır ve bağlanana kadar dene
             if (sock == null && WakeOnLan.valid(mac)) {
                 runOnUiThread { toast("TV kapalı görünüyor, uyandırılıyor…") }
                 val end = System.currentTimeMillis() + 35000
                 while (sock == null && System.currentTimeMillis() < end) {
                     WakeOnLan.send(mac!!, host)
                     Thread.sleep(2500)
-                    sock = open()
+                    sock = open() ?: if (rediscover()) open() else null
                 }
                 if (sock != null) Thread.sleep(2500)  // TV'nin kendine gelmesi için kısa bekleme
             }
