@@ -77,6 +77,14 @@ class JetAccess : AccessibilityService() {
 
     // ------------------------------------------------------------------ sistem geneli imleç
 
+    // İmleç küçük bir pencerede çizilir ve tıklanan noktanın hemen sağ altında durur.
+    // Böylece Android'in güvenlik pencereleri (kurulum onayı vb.) "üstü kapalı" sayıp dokunmayı reddetmez.
+    private var px = -1f
+    private var py = -1f
+    private var scrW = 1920f
+    private var scrH = 1080f
+    private var lp: WindowManager.LayoutParams? = null
+
     private fun cursor(): CursorView {
         h.removeCallbacks(hide)
         h.postDelayed(hide, 8000)
@@ -85,29 +93,38 @@ class JetAccess : AccessibilityService() {
         val size = Point()
         @Suppress("DEPRECATION")
         wm.defaultDisplay.getRealSize(size)
+        scrW = size.x.toFloat(); scrH = size.y.toFloat()
+        if (px < 0) { px = scrW / 2; py = scrH / 2 }
         val v = CursorView(this)
-        v.cx = size.x / 2f
-        v.cy = size.y / 2f
-        val lp = WindowManager.LayoutParams(
-            size.x, size.y, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+        v.cx = 0f; v.cy = 0f
+        val box = (40 * d).toInt()
+        val l = WindowManager.LayoutParams(
+            box, box, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        )
-        v.maxW = size.x.toFloat()
-        v.maxH = size.y.toFloat()
-        try { wm.addView(v, lp) } catch (_: Exception) { }
+        ).apply { gravity = android.view.Gravity.TOP or android.view.Gravity.START }
+        lp = l
+        place(l)
+        try { wm.addView(v, l) } catch (_: Exception) { }
         cursorView = v
         return v
+    }
+
+    private fun place(l: WindowManager.LayoutParams? = lp) {
+        l ?: return
+        l.x = px.toInt() + 2
+        l.y = py.toInt() + 2
+        val v = cursorView ?: return
+        try { (getSystemService(WINDOW_SERVICE) as WindowManager).updateViewLayout(v, l) } catch (_: Exception) { }
     }
 
     fun hideCursor() { h.removeCallbacks(hide); cursorView?.visibility = View.GONE }
 
     private fun gesture(x1: Float, y1: Float, x2: Float, y2: Float, ms: Long, done: (() -> Unit)? = null) {
         if (Build.VERSION.SDK_INT < 24) { done?.invoke(); return }
-        val v = cursorView
-        val w = (v?.maxW ?: 1920f) - 1
-        val hh = (v?.maxH ?: 1080f) - 1
+        val w = scrW - 1
+        val hh = scrH - 1
         val p = Path().apply {
             moveTo(x1.coerceIn(0f, w), y1.coerceIn(0f, hh))
             if (x1 != x2 || y1 != y2) lineTo(x2.coerceIn(0f, w), y2.coerceIn(0f, hh))
@@ -139,10 +156,14 @@ class JetAccess : AccessibilityService() {
             return Pair(p.getOrNull(0)?.toFloatOrNull() ?: 0f, p.getOrNull(1)?.toFloatOrNull() ?: 0f)
         }
         when (cmd) {
-            "M" -> { val (x, y) = xy(); v.moveBy(x * d, y * d) }
-            "C" -> gesture(v.cx, v.cy, v.cx, v.cy, 60) { askKeyboardIfEditing() }
-            "LD" -> gesture(v.cx, v.cy, v.cx, v.cy, 800)
-            "SD" -> { sx = v.cx; sy = v.cy; ax = 0f; ay = 0f; endPending = false }
+            "M" -> {
+                val (x, y) = xy()
+                px = (px + x * d).coerceIn(0f, scrW - 1); py = (py + y * d).coerceIn(0f, scrH - 1)
+                place()
+            }
+            "C" -> gesture(px, py, px, py, 60) { askKeyboardIfEditing() }
+            "LD" -> gesture(px, py, px, py, 800)
+            "SD" -> { sx = px; sy = py; ax = 0f; ay = 0f; endPending = false }
             "S" -> {
                 val (x, y) = xy()
                 ax += x * d * 1.5f; ay += y * d * 1.5f
