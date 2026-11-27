@@ -233,7 +233,68 @@ class PlayerActivity : Activity() {
         return if (best.value >= 8) best.key else null
     }
 
-    private var dlg: android.app.AlertDialog? = null
+    /** Oynatıcının içinde açılan cam menü (imleç ve ok tuşlarıyla kullanılır). */
+    private var menu: View? = null
+
+    private fun closeMenu() {
+        menu?.let { frame.removeView(it) }
+        menu = null
+    }
+
+    private fun showMenu(title: String, items: List<String>, focus: Int, closeLabel: String, onPick: (Int) -> Unit) {
+        closeMenu()
+        val d = resources.displayMetrics.density
+        fun px(v: Int) = (v * d).toInt()
+        fun pill(primary: Boolean) = android.graphics.drawable.StateListDrawable().apply {
+            fun shape(fill: Int, stroke: Int) = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = px(100).toFloat(); setColor(fill); if (stroke != 0) setStroke(px(1), stroke)
+            }
+            addState(intArrayOf(android.R.attr.state_focused), shape(0xFFEBC04F.toInt(), 0))
+            addState(intArrayOf(android.R.attr.state_pressed), shape(0xFFD4A938.toInt(), 0))
+            addState(intArrayOf(), if (primary) shape(0x33EBC04F, 0x88EBC04F.toInt()) else shape(0x1FFFFFFF, 0x2EFFFFFF))
+        }
+        val textColors = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
+            intArrayOf(0xFF1B1C1F.toInt(), 0xFFFFFFFF.toInt()))
+        val scrim = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(0x99000000.toInt())
+            isClickable = true
+            setOnClickListener { closeMenu() }
+        }
+        val card = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            isClickable = true
+            setPadding(px(18), px(20), px(18), px(16))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(0xF2232427.toInt()); cornerRadius = px(28).toFloat(); setStroke(px(1), 0x2EFFFFFF)
+            }
+        }
+        card.addView(android.widget.TextView(this).apply {
+            text = title; textSize = 20f; typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt()); setPadding(px(8), 0, px(8), px(12))
+        })
+        val rows = ArrayList<View>()
+        fun row(t: String, primary: Boolean, click: () -> Unit) = android.widget.TextView(this).apply {
+            text = t; textSize = 17f; setTextColor(textColors)
+            if (primary) typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = if (primary) android.view.Gravity.CENTER else android.view.Gravity.CENTER_VERTICAL
+            setPadding(px(22), px(13), px(22), px(13))
+            background = pill(primary)
+            isFocusable = true; isClickable = true
+            setOnClickListener { click() }
+        }.also { v ->
+            rows.add(v)
+            card.addView(v, android.widget.LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, px(4), 0, px(4)) })
+        }
+        items.forEachIndexed { i, t -> row(t, false) { onPick(i) } }
+        row(closeLabel, true) { closeMenu() }
+        val w = minOf(px(560), (resources.displayMetrics.widthPixels * 0.8f).toInt())
+        scrim.addView(card, android.widget.FrameLayout.LayoutParams(w, -2, android.view.Gravity.CENTER))
+        frame.addView(scrim, frame.indexOfChild(cursor), android.widget.FrameLayout.LayoutParams(-1, -1))
+        menu = scrim
+        view.hideController()
+        scrim.post { rows.getOrNull(focus.coerceIn(0, rows.size - 1))?.requestFocus() }
+    }
     private lateinit var cursor: CursorView
     private lateinit var frame: android.widget.FrameLayout
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
@@ -272,15 +333,16 @@ class PlayerActivity : Activity() {
         if (opts.size <= 2) { note("Bu videoda tek kalite var"); return }
         val sorted = listOf(opts[0]) + opts.drop(1).sortedByDescending { it.label.substringBefore('p').toIntOrNull() ?: 0 }
         val cur = p.videoFormat?.height ?: 0
-        dlg = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-            .setTitle("Kalite" + if (cur > 0) "  (şu an ${cur}p)" else "")
-            .setItems(sorted.map { it.label }.toTypedArray()) { _, w ->
-                val o = sorted[w]
-                val b = p.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_VIDEO)
-                    .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE).setForceHighestSupportedBitrate(false)
-                if (o.group != null) b.setOverrideForType(TrackSelectionOverride(o.group.mediaTrackGroup, o.index))
-                p.trackSelectionParameters = b.build()
-            }
+        showMenu("Kalite" + if (cur > 0) "  (şu an ${cur}p)" else "", sorted.map { it.label }, 0, "Kapat") { w ->
+            val o = sorted[w]
+            val b = p.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE).setForceHighestSupportedBitrate(false)
+            if (o.group != null) b.setOverrideForType(TrackSelectionOverride(o.group.mediaTrackGroup, o.index))
+            p.trackSelectionParameters = b.build()
+            closeMenu()
+            note("Kalite: " + o.label.substringBefore("  "))
+        }
+    }
             .setNegativeButton("Kapat", null)
             .show()
     }
@@ -352,32 +414,24 @@ class PlayerActivity : Activity() {
             "Konum:  " + Store.SUB_POSITIONS[st.subPos.coerceIn(0, 2)],
             "Arka plan:  " + Store.SUB_BGS[st.subBg.coerceIn(0, 2)]
         )
-        dlg = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-            .setTitle("Altyazı görünümü (değiştirmek için seçin)")
-            .setItems(items) { _, w ->
-                when (w) {
-                    0 -> st.subColor = (st.subColor + 1) % Store.SUB_COLORS.size
-                    1 -> st.subSize = (st.subSize + 1) % Store.SUB_SIZES.size
-                    2 -> st.subPos = (st.subPos + 1) % Store.SUB_POSITIONS.size
-                    3 -> st.subBg = (st.subBg + 1) % Store.SUB_BGS.size
-                }
-                applySubStyle()
-                view.post { styleDialog(w) }
+        showMenu("Altyazı görünümü (değiştirmek için seçin)", items.toList(), focus, "Tamam") { w ->
+            when (w) {
+                0 -> st.subColor = (st.subColor + 1) % Store.SUB_COLORS.size
+                1 -> st.subSize = (st.subSize + 1) % Store.SUB_SIZES.size
+                2 -> st.subPos = (st.subPos + 1) % Store.SUB_POSITIONS.size
+                3 -> st.subBg = (st.subBg + 1) % Store.SUB_BGS.size
             }
-            .setNegativeButton("Tamam", null)
-            .show()
-        dlg?.listView?.let { lv -> lv.post { lv.setSelection(focus); lv.getChildAt(focus)?.requestFocus() } }
+            applySubStyle()
+            styleDialog(w)
+        }
         // ayarı telefona da bildir (telefondan gönderilen videolar aynı görünümü kullansın)
         Hub.server?.send("SS " + listOf(st.subColor, st.subSize, st.subPos, st.subBg).joinToString(","))
     }
 
     /** Telefonun ok tuşlarını açık menüye / görünen kontrollere gerçek tuş gibi ilet. */
     private fun key(code: Int) {
-        val d = dlg?.takeIf { it.isShowing }
-        val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code)
-        val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code)
-        if (d != null) { d.dispatchKeyEvent(down); d.dispatchKeyEvent(up) }
-        else { dispatchKeyEvent(down); dispatchKeyEvent(up) }
+        dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code))
+        dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code))
     }
 
     /** Ayarlardaki altyazı rengi, boyutu, yüksekliği ve arka planı. */
@@ -410,7 +464,7 @@ class PlayerActivity : Activity() {
     private fun onRemote(line: String): Boolean {
         val p = player ?: return false
         // menü açıksa ya da kontroller görünüyorsa ok tuşları onların arasında gezinsin
-        if (dlg?.isShowing == true || view.isControllerFullyVisible) {
+        if (menu != null || view.isControllerFullyVisible) {
             val code = when (line) {
                 "K UP" -> android.view.KeyEvent.KEYCODE_DPAD_UP
                 "K DOWN" -> android.view.KeyEvent.KEYCODE_DPAD_DOWN
@@ -419,8 +473,8 @@ class PlayerActivity : Activity() {
                 "K CENTER", "K ENTER" -> android.view.KeyEvent.KEYCODE_DPAD_CENTER
                 else -> 0
             }
-            if (code != 0) { key(code); view.showController(); return true }
-            if (line == "K BACK" && dlg?.isShowing == true) { dlg?.dismiss(); return true }
+            if (code != 0) { key(code); if (menu == null) view.showController(); return true }
+            if (line == "K BACK" && menu != null) { closeMenu(); return true }
         }
         // touchpad: imleç görünüyorsa dokunma imlecin olduğu yere gider
         val d = resources.displayMetrics.density
@@ -429,11 +483,13 @@ class PlayerActivity : Activity() {
                 val a = line.split(' ')
                 showCursor()
                 cursor.moveBy((a.getOrNull(1)?.toFloatOrNull() ?: 0f) * d, (a.getOrNull(2)?.toFloatOrNull() ?: 0f) * d)
-                view.showController()
+                if (menu == null) view.showController()
                 return true
             }
+            line == "C" && menu != null && cursor.visibility != View.VISIBLE -> {
+                key(android.view.KeyEvent.KEYCODE_DPAD_CENTER); return true
+            }
             line == "C" && cursor.visibility == View.VISIBLE -> {
-                if (dlg?.isShowing == true) { key(android.view.KeyEvent.KEYCODE_DPAD_CENTER); return true }
                 showCursor()
                 touch(android.view.MotionEvent.ACTION_DOWN)
                 ui.postDelayed({ touch(android.view.MotionEvent.ACTION_UP) }, 40)
@@ -456,6 +512,7 @@ class PlayerActivity : Activity() {
 
     /** Geri: kontroller açıksa önce onları gizle, değilse oynatıcıyı kapat. */
     private fun backPressed() {
+        if (menu != null) { closeMenu(); return }
         if (view.isControllerFullyVisible) view.hideController() else finish()
     }
 
