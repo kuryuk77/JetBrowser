@@ -90,11 +90,17 @@ class Store(ctx: Context) {
         get() = p.getInt("subBg", 0)
         set(v) = p.edit().putInt("subBg", v).apply()
 
+    // TV oynatıcısında varsayılan video kalitesi
+    var quality: Int
+        get() = p.getInt("quality", 0)
+        set(v) = p.edit().putInt("quality", v).apply()
+
     var textZoom: Int
         get() = p.getInt("zoom", 100)
         set(v) = p.edit().putInt("zoom", v).apply()
 
     companion object {
+        val QUALITIES = arrayOf("Otomatik (internete göre)", "Her zaman en yüksek", "En fazla 1080p", "En fazla 720p", "En fazla 480p")
         val SUB_COLORS = arrayOf("Beyaz", "Sarı", "Açık yeşil", "Açık mavi")
         val SUB_COLOR_VALUES = intArrayOf(0xFFFFFFFF.toInt(), 0xFFFFE04A.toInt(), 0xFFB6F5A0.toInt(), 0xFFA8E4FF.toInt())
         val SUB_SIZES = arrayOf("Küçük", "Orta", "Büyük", "Çok büyük")

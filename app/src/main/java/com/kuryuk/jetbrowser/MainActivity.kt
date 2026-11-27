@@ -1587,6 +1587,7 @@ class MainActivity : Activity() {
             "Yazı boyutu: %" + store.textZoom,
             "Altyazı görünümü (TV oynatıcı): " + Store.SUB_COLORS[store.subColor.coerceIn(0, 3)] + " · " +
                 Store.SUB_SIZES[store.subSize.coerceIn(0, 3)] + " · " + Store.SUB_POSITIONS[store.subPos.coerceIn(0, 2)],
+            "Video kalitesi (TV oynatıcı): " + Store.QUALITIES[store.quality.coerceIn(0, 4)],
             "Telefon kumandası adresi: " + RemoteServer.localIp() + ":" + remote.port,
             "Varsayılan tarayıcı yap",
             "Güncellemeyi denetle",
@@ -1610,8 +1611,10 @@ class MainActivity : Activity() {
                     store.textZoom = zooms[w]; tabs.forEach { it.settings.textZoom = zooms[w] }; settingsDialog()
                 }, selected = zooms.indexOf(store.textZoom))
                 7 -> subStyleDialog()
-                8 -> remoteTile()
-                9 -> try {
+                8 -> listPanel("Video kalitesi (TV oynatıcı)", Store.QUALITIES.toList(), { v -> store.quality = v; settingsDialog() },
+                    selected = store.quality)
+                9 -> remoteTile()
+                10 -> try {
                     startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
                 } catch (_: Exception) { toast("Bu cihazda açılamadı") }
                 else -> checkUpdate()
@@ -1852,7 +1855,7 @@ class MainActivity : Activity() {
         val n = sj.length()
         sendLine("VID " + URLEncoder.encode(m.url, "UTF-8") + " " + m.type + " " + URLEncoder.encode(hj, "UTF-8") + " " + pos +
             " " + URLEncoder.encode(sj.toString(), "UTF-8") +
-            " " + listOf(store.subColor, store.subSize, store.subPos, store.subBg).joinToString(","),
+            " " + listOf(store.subColor, store.subSize, store.subPos, store.subBg).joinToString(",") + " " + store.quality,
             "Video TV'de açılıyor ✓" + if (n > 0) "  ($n altyazı)" else "  (altyazı bulunamadı)")
         current?.evaluateJavascript("document.querySelectorAll('video').forEach(function(v){v.pause()})", null)
     }

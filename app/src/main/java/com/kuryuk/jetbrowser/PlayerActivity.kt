@@ -56,7 +56,12 @@ class PlayerActivity : Activity() {
             setShowSubtitleButton(true)
             keepScreenOn = true
         }
-        setContentView(view)
+        cursor = CursorView(this).apply { visibility = View.GONE }
+        frame = android.widget.FrameLayout(this).apply {
+            addView(view, android.widget.FrameLayout.LayoutParams(-1, -1))
+            addView(cursor, android.widget.FrameLayout.LayoutParams(-1, -1))
+        }
+        setContentView(frame)
         addStyleButton()
         play(intent)
     }
@@ -122,6 +127,7 @@ class PlayerActivity : Activity() {
             .setPreferredTextLanguage("tr")
             .setPreferredAudioLanguage("tr")
             .build()
+        applyQuality(p)
         player = p
         view.player = p
         applySubStyle()
@@ -228,6 +234,74 @@ class PlayerActivity : Activity() {
     }
 
     private var dlg: android.app.AlertDialog? = null
+    private lateinit var cursor: CursorView
+    private lateinit var frame: android.widget.FrameLayout
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private val hideCursor = Runnable { cursor.visibility = View.GONE }
+    private var downAt = 0L
+
+    /** Ayarlardaki varsayılan kalite. */
+    private fun applyQuality(p: ExoPlayer) {
+        val q = Store(this).quality
+        val b = p.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+            .setForceHighestSupportedBitrate(q == 1)
+            .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
+        when (q) {
+            2 -> b.setMaxVideoSize(1920, 1080)
+            3 -> b.setMaxVideoSize(1280, 720)
+            4 -> b.setMaxVideoSize(854, 480)
+        }
+        p.trackSelectionParameters = b.build()
+    }
+
+    /** O anki videonun kalite seçenekleri (yayında birden fazla varsa). */
+    private fun qualityDialog() {
+        val p = player ?: return
+        data class Opt(val label: String, val group: Tracks.Group?, val index: Int)
+        val opts = mutableListOf(Opt("Otomatik", null, -1))
+        val seen = HashSet<Int>()
+        p.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }.forEach { g ->
+            for (k in 0 until g.length) {
+                if (!g.isTrackSupported(k)) continue
+                val f = g.getTrackFormat(k)
+                val h = if (f.height > 0) f.height else continue
+                if (seen.add(h)) opts.add(Opt("${h}p" + if (f.bitrate > 0) "  (${f.bitrate / 1000} kbps)" else "", g, k))
+            }
+        }
+        if (opts.size <= 2) { note("Bu videoda tek kalite var"); return }
+        val sorted = listOf(opts[0]) + opts.drop(1).sortedByDescending { it.label.substringBefore('p').toIntOrNull() ?: 0 }
+        val cur = p.videoFormat?.height ?: 0
+        dlg = android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("Kalite" + if (cur > 0) "  (şu an ${cur}p)" else "")
+            .setItems(sorted.map { it.label }.toTypedArray()) { _, w ->
+                val o = sorted[w]
+                val b = p.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                    .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE).setForceHighestSupportedBitrate(false)
+                if (o.group != null) b.setOverrideForType(TrackSelectionOverride(o.group.mediaTrackGroup, o.index))
+                p.trackSelectionParameters = b.build()
+            }
+            .setNegativeButton("Kapat", null)
+            .show()
+    }
+
+    /** Telefon touchpad'i: oynatıcıda imleç ve dokunma. */
+    private fun touch(action: Int) {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (action == android.view.MotionEvent.ACTION_DOWN) downAt = now
+        val e = android.view.MotionEvent.obtain(downAt, now, action, cursor.cx, cursor.cy, 0)
+        e.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+        frame.dispatchTouchEvent(e)
+        e.recycle()
+    }
+
+    private fun showCursor() {
+        cursor.visibility = View.VISIBLE
+        cursor.centerIfUnset()
+        cursor.bringToFront()
+        ui.removeCallbacks(hideCursor)
+        ui.postDelayed(hideCursor, 3000)
+    }
 
     /** CC tuşunun yanına "Aa" (altyazı görünümü) tuşu ekler. */
     private fun addStyleButton() {
@@ -253,6 +327,20 @@ class PlayerActivity : Activity() {
         }
         val i = if (cc != null) bar.indexOfChild(cc) + 1 else 0
         bar.addView(b, i, android.view.ViewGroup.LayoutParams((48 * d).toInt(), (48 * d).toInt()))
+        // kalite tuşu ("HD")
+        val q = android.widget.TextView(this).apply {
+            text = "HD"
+            textSize = 15f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            gravity = android.view.Gravity.CENTER
+            isFocusable = true
+            isClickable = true
+            background = b.background.constantState?.newDrawable()
+            contentDescription = "Kalite"
+            setOnClickListener { qualityDialog() }
+        }
+        bar.addView(q, i + 1, android.view.ViewGroup.LayoutParams((48 * d).toInt(), (48 * d).toInt()))
     }
 
     /** Altyazı rengi / boyutu / konumu / arka planı; seçince hemen uygulanır. */
@@ -333,6 +421,26 @@ class PlayerActivity : Activity() {
             }
             if (code != 0) { key(code); view.showController(); return true }
             if (line == "K BACK" && dlg?.isShowing == true) { dlg?.dismiss(); return true }
+        }
+        // touchpad: imleç görünüyorsa dokunma imlecin olduğu yere gider
+        val d = resources.displayMetrics.density
+        when {
+            line.startsWith("M ") -> {
+                val a = line.split(' ')
+                showCursor()
+                cursor.moveBy((a.getOrNull(1)?.toFloatOrNull() ?: 0f) * d, (a.getOrNull(2)?.toFloatOrNull() ?: 0f) * d)
+                view.showController()
+                return true
+            }
+            line == "C" && cursor.visibility == View.VISIBLE -> {
+                if (dlg?.isShowing == true) { key(android.view.KeyEvent.KEYCODE_DPAD_CENTER); return true }
+                showCursor()
+                touch(android.view.MotionEvent.ACTION_DOWN)
+                ui.postDelayed({ touch(android.view.MotionEvent.ACTION_UP) }, 40)
+                return true
+            }
+            line == "LD" && cursor.visibility == View.VISIBLE -> { showCursor(); touch(android.view.MotionEvent.ACTION_DOWN); return true }
+            line == "LU" -> { touch(android.view.MotionEvent.ACTION_UP); return true }
         }
         when (line) {
             "C", "K CENTER", "K ENTER" -> { if (p.isPlaying) p.pause() else p.play(); view.showController() }
